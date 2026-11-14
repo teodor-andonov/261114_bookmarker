@@ -8,13 +8,15 @@ A dependency-free prototype for collecting links. Runs entirely in the browser, 
 - Android Share Target integration when installed as a PWA in Chrome on Android (support varies by browser).
 - Best-effort title, description, page image, favicon, author, publication date, and site metadata.
 - YouTube thumbnails derived directly from video IDs; public GitHub repository descriptions via GitHub's CORS-enabled API.
+- Distinctive generated graphic covers for every URL, with consistent colour identity by website.
+- Custom cover image uploads (locally resized), image URLs, and an option to force a graphic cover.
 - Grid/list display, sorting, search, tags, notes, manual editing, metadata retry, delete.
 - Local IndexedDB database and JSON export/import (merge, skip duplicates).
 - Offline app shell via service worker; saving is local even without a network. External preview images may not be available offline.
 
 ## Metadata limitation — important
 
-Web browsers do **not** permit one origin to read most other sites' HTML due to CORS. When a page permits CORS, Linkbook fetches its HTML and parses Open Graph, Twitter Card, HTML meta tags, and JSON-LD data in the browser. If access is denied, it retains a usable basic bookmark (hostname, guessed title, favicon guess, and known-site image if possible). You can edit the fields manually.
+Web browsers do **not** permit one origin to read most other sites' HTML due to CORS. When a page permits CORS, Linkbook fetches its HTML and parses Open Graph, Twitter Card, HTML meta tags, and JSON-LD data in the browser. If access is denied, it retains a usable basic bookmark (hostname, guessed title, favicon guess, and known-site image if possible). You can edit fields manually. When no image can be used, Linkbook displays a deterministic, editorial-style cover generated locally from the URL and title.
 
 [Defuddle by kepano](https://github.com/kepano/defuddle) was considered. It is excellent at extracting content and structured metadata from **HTML already available to the application**, but it cannot bypass CORS. For this small no-extension, no-proxy prototype, a small Open Graph/JSON-LD parser avoids a large dependency while addressing the HTML-accessible cases. Defuddle would become more useful if HTML capture (e.g. an extension or bookmarklet) is added later.
 
@@ -59,7 +61,7 @@ Open the deployed site with Chrome for Android, then use **Install app** / **Add
 
 ## Data & privacy
 
-Bookmarks live in IndexedDB on the **specific browser and site origin**. Installing a PWA commonly shares the browser's origin storage, but separate browser profiles/devices are independent. Clearing site data can remove bookmarks. **Export JSON regularly.** Importing merges records by URL. No account or sync is provided. Browser storage can be evicted, especially under storage pressure.
+Bookmarks live in IndexedDB on the **specific browser and site origin**. Installing a PWA commonly shares the browser's origin storage, but separate browser profiles/devices are independent. Clearing site data can remove bookmarks. **Export JSON regularly.** Uploaded cover images are included as compressed data in the JSON export, so backups can be larger. Importing merges records by URL. No account or sync is provided. Browser storage can be evicted, especially under storage pressure.
 
 When you host this app on a **public GitHub repository**, the *app code* is public. Your bookmarks are **not** committed to that repository. Do not rely on browser-only storage as your sole copy of important references.
 

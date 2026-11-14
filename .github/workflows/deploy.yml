@@ -21,7 +21,7 @@ jobs:
       - name: Stage static app
         run: |
           mkdir -p dist
-          cp index.html styles.css app.js db.js metadata.js manifest.webmanifest sw.js dist/
+          cp index.html styles.css app.js db.js metadata.js cover.js manifest.webmanifest sw.js dist/
           cp -R icons dist/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

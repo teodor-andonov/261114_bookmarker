@@ -1,5 +1,6 @@
 import { listBookmarks, getBookmark, getByUrl, saveBookmark, deleteBookmark } from './db.js';
 import { normalizeUrl, safeImageUrl, fallbackMetadata, getMetadata, urlFromShare, parsePublicationDate } from './metadata.js';
+import { coverIdentity, coverImage, isLocalCover } from './cover.js';
 
 const $ = id => document.getElementById(id);
 const els = {
@@ -8,10 +9,11 @@ const els = {
   list: $('bookmarkList'), empty: $('emptyState'), emptyTitle: $('emptyTitle'), emptyDescription: $('emptyDescription'),
   gridButton: $('gridButton'), listButton: $('listButton'), exportButton: $('exportButton'), importButton: $('importButton'), importFile: $('importFile'),
   dialog: $('detailDialog'), detailForm: $('detailForm'), closeDialog: $('closeDialog'), deleteButton: $('deleteButton'),
-  refreshButton: $('refreshButton'), metadataStatus: $('detailMetadataStatus')
+  refreshButton: $('refreshButton'), metadataStatus: $('detailMetadataStatus'),
+  coverPreview: $('coverEditorPreview'), coverUpload: $('coverUpload'), clearCover: $('clearCoverButton')
 };
 
-const state = { bookmarks: [], view: getSavedView(), selectedTag: '', selectedId: null, loading: false };
+const state = { bookmarks: [], view: getSavedView(), selectedTag: '', selectedId: null, loading: false, coverUploadData: '' };
 
 function getSavedView() {
   try { return localStorage.getItem('linkbook-view') === 'list' ? 'list' : 'grid'; }
@@ -47,19 +49,31 @@ function filteredBookmarks() {
 const editIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16 4a2 2 0 0 1 3 3L9 17l-4 1 1-4L16 4Z"/></svg>';
 const externalIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9"/><path d="M20 13v7H4V4h7"/></svg>';
 
+function coverMarkup(bookmark) {
+  const cover = coverIdentity(bookmark);
+  const photo = coverImage(bookmark);
+  return `<div class="preview" aria-label="Cover for ${escapeHtml(bookmark.title || cover.host)}">
+    <div class="preview-art cover-tone-${cover.tone} cover-pattern-${cover.pattern}">
+      <span class="cover-ornament" aria-hidden="true"></span>
+      <div class="cover-top"><span class="cover-series">LB—${cover.edition}</span><span class="cover-kind">${escapeHtml(cover.kind)}</span></div>
+      <div class="cover-center"><div class="cover-brand">${escapeHtml(cover.brand)}</div><div class="cover-subtitle">${escapeHtml(cover.title)}</div></div>
+      <div class="cover-bottom"><span class="cover-host">${escapeHtml(cover.host)}</span><span class="cover-mark" aria-hidden="true">↗</span></div>
+    </div>
+    ${photo ? `<img class="preview-image" src="${escapeHtml(photo)}" loading="lazy" referrerpolicy="no-referrer" alt="" />` : ''}
+  </div>`;
+}
+
 function cardHtml(b) {
   const domain = domainOf(b.url);
-  const image = safeImageUrl(b.image, b.url);
   const icon = safeImageUrl(b.favicon, b.url);
-  const preview = image ? `<img class="preview-image" src="${escapeHtml(image)}" loading="lazy" referrerpolicy="no-referrer" alt="" />` : '';
   const favicon = icon ? `<img class="favicon" src="${escapeHtml(icon)}" loading="lazy" referrerpolicy="no-referrer" alt="" />` : '<span class="favicon is-hidden"></span>';
   const tags = (b.tags || []).slice(0, 3).map(tag => `<span class="inline-tag">${escapeHtml(tag)}</span>`).join('');
   return `<article class="bookmark-card" data-id="${escapeHtml(b.id)}">
-    <div class="preview"><div class="preview-art"><span class="preview-letter">${escapeHtml((domain[0] || 'L').toUpperCase())}</span></div>${preview}</div>
+    ${coverMarkup(b)}
     <div class="bookmark-body">
       <div class="bookmark-meta">${favicon}<span class="favicon-fallback">${escapeHtml((domain[0] || 'L').toUpperCase())}</span><span class="domain" title="${escapeHtml(domain)}">${escapeHtml(b.siteName || domain)}</span></div>
       <h3 title="${escapeHtml(b.title)}">${escapeHtml(b.title || domain)}</h3>
-      <p class="description">${escapeHtml(b.description || 'No description available')}</p>
+      <p class="description">${escapeHtml(b.description || 'Saved for later')}</p>
       ${tags ? `<div class="inline-tags">${tags}</div>` : ''}
       <div class="bookmark-foot"><span class="date-added">${escapeHtml(displayDate(b.createdAt))}</span><div class="card-actions"><button type="button" class="tiny-action" data-action="edit" title="Edit bookmark" aria-label="Edit ${escapeHtml(b.title)}">${editIcon}</button><a class="tiny-action" href="${escapeHtml(b.url)}" target="_blank" rel="noopener noreferrer" title="Open page" aria-label="Open ${escapeHtml(b.title)}">${externalIcon}</a></div></div>
     </div>
@@ -126,14 +140,60 @@ async function createBookmark(rawUrl, sharedTitle = '') {
 }
 
 function formControl(name) { return els.detailForm.elements.namedItem(name); }
+function coverDraft() {
+  const original = state.bookmarks.find(b => b.id === state.selectedId);
+  return {
+    ...original,
+    title: formControl('title').value || original?.title || '',
+    coverMode: formControl('coverMode').value,
+    customCoverUrl: formControl('customCoverUrl').value,
+    coverData: state.coverUploadData
+  };
+}
+function updateCoverPreview() {
+  if (state.selectedId) {
+    els.coverPreview.innerHTML = coverMarkup(coverDraft());
+    // Ensure a URL that fails to load gives way to the designed cover.
+    const img = els.coverPreview.querySelector('.preview-image');
+    if (img) img.addEventListener('error', () => img.classList.add('is-hidden'));
+  }
+}
 function fillEditor(bookmark) {
   state.selectedId = bookmark.id;
+  state.coverUploadData = isLocalCover(bookmark.coverData) ? bookmark.coverData : '';
   for (const name of ['title', 'url', 'description', 'author', 'published', 'image', 'notes']) formControl(name).value = bookmark[name] || '';
   formControl('tags').value = (bookmark.tags || []).join(', ');
+  formControl('coverMode').value = ['auto','graphic','custom'].includes(bookmark.coverMode) ? bookmark.coverMode : 'auto';
+  formControl('customCoverUrl').value = bookmark.customCoverUrl || '';
+  els.coverUpload.value = '';
   els.metadataStatus.textContent = bookmark.metadataSource === 'basic'
-    ? 'Limited preview: the page may block direct browser access. You can add a title, description or image URL manually.'
-    : `Metadata source: ${bookmark.metadataSource === 'github-api' ? 'GitHub public API' : 'page HTML'}. Saved only in this browser.`;
+    ? 'Most pages block browser metadata requests. Graphic covers work for every link; custom images stay only in this browser.'
+    : `Metadata source: ${bookmark.metadataSource === 'github-api' ? 'GitHub public API' : 'page HTML'}. Custom covers survive metadata refresh.`;
+  updateCoverPreview();
 }
+
+async function resizeCover(file) {
+  const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!allowed.includes(file.type)) throw new Error('Upload a PNG, JPEG, or WebP image.');
+  if (file.size > 10_000_000) throw new Error('Image is too large; choose one under 10 MB.');
+  let bitmap;
+  try { bitmap = await createImageBitmap(file); }
+  catch { throw new Error('Could not read this image. Try PNG or JPEG.'); }
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1000; canvas.height = 630;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas image conversion is unavailable.');
+    const crop = Math.min(bitmap.width / canvas.width, bitmap.height / canvas.height);
+    const width = canvas.width * crop, height = canvas.height * crop;
+    ctx.drawImage(bitmap, (bitmap.width-width)/2, (bitmap.height-height)/2, width, height, 0, 0, canvas.width, canvas.height);
+    let data = canvas.toDataURL('image/webp', .76);
+    if (!data.startsWith('data:image/webp;')) data = canvas.toDataURL('image/jpeg', .75);
+    if (!isLocalCover(data)) throw new Error('Converted image is still too large. Try a smaller photo.');
+    return data;
+  } finally { bitmap.close?.(); }
+}
+
 async function openEditor(id) {
   try {
     const bookmark = await getBookmark(id);
@@ -174,6 +234,29 @@ for (const [view, button] of [['grid', els.gridButton], ['list', els.listButton]
 }
 els.closeDialog.addEventListener('click', () => els.dialog.close());
 els.dialog.addEventListener('click', event => { if (event.target === els.dialog) els.dialog.close(); });
+for (const field of ['title', 'coverMode', 'customCoverUrl']) {
+  formControl(field).addEventListener('input', updateCoverPreview);
+}
+els.coverUpload.addEventListener('change', async () => {
+  const file = els.coverUpload.files?.[0];
+  if (!file) return;
+  try {
+    els.metadataStatus.textContent = 'Optimising image locally…';
+    state.coverUploadData = await resizeCover(file);
+    formControl('coverMode').value = 'custom';
+    els.metadataStatus.textContent = 'Custom cover ready. Save changes to keep it with this bookmark.';
+    updateCoverPreview();
+  } catch (error) { els.metadataStatus.textContent = error.message; }
+  finally { els.coverUpload.value = ''; }
+});
+els.clearCover.addEventListener('click', () => {
+  state.coverUploadData = '';
+  formControl('customCoverUrl').value = '';
+  formControl('coverMode').value = 'graphic';
+  els.metadataStatus.textContent = 'Custom cover cleared. The graphic cover will be used when you save.';
+  updateCoverPreview();
+});
+
 
 els.detailForm.addEventListener('submit', async event => {
   event.preventDefault();
@@ -192,9 +275,13 @@ els.detailForm.addEventListener('submit', async event => {
       author: formControl('author').value.trim().slice(0, 300),
       published: parsePublicationDate(formControl('published').value),
       image: safeImageUrl(formControl('image').value, url),
+      coverMode: formControl('coverMode').value,
+      coverData: isLocalCover(state.coverUploadData) ? state.coverUploadData : '',
+      customCoverUrl: safeImageUrl(formControl('customCoverUrl').value, url),
       tags, notes: formControl('notes').value.slice(0, 10000), updatedAt: new Date().toISOString()
     };
     if (!saved.title) throw new Error('Title cannot be empty.');
+    if (saved.coverMode === 'custom' && !saved.coverData && !saved.customCoverUrl) throw new Error('For a custom cover, upload an image or enter an image URL.');
     await saveBookmark(saved);
     els.dialog.close();
     await reload();
@@ -246,7 +333,7 @@ els.importFile.addEventListener('change', async () => {
   const file = els.importFile.files?.[0];
   els.importFile.value = '';
   if (!file) return;
-  if (file.size > 20_000_000) { notify('Backup is too large (20 MB maximum).', 'error'); return; }
+  if (file.size > 100_000_000) { notify('Backup is too large (100 MB maximum).', 'error'); return; }
   try {
     const payload = JSON.parse(await file.text());
     if (payload?.format !== 'linkbook' || payload?.version !== 1 || !Array.isArray(payload.bookmarks)) throw new Error('Not a Linkbook v1 JSON backup.');
@@ -259,7 +346,10 @@ els.importFile.addEventListener('change', async () => {
         const record = {
           id: crypto.randomUUID(), url, ...basic,
           title: String(raw.title || basic.title).slice(0,500), description: String(raw.description || '').slice(0,5000),
-          image: safeImageUrl(raw.image, url), favicon: safeImageUrl(raw.favicon, url) || basic.favicon,
+          image: safeImageUrl(raw.image, url),
+          coverMode: ['auto','graphic','custom'].includes(raw.coverMode) ? raw.coverMode : 'auto',
+          coverData: isLocalCover(raw.coverData) ? raw.coverData : '',
+          customCoverUrl: safeImageUrl(raw.customCoverUrl, url), favicon: safeImageUrl(raw.favicon, url) || basic.favicon,
           siteName: String(raw.siteName || basic.siteName).slice(0,200), author: String(raw.author || '').slice(0,300),
           published: parsePublicationDate(raw.published),
           metadataSource: ['basic', 'page', 'github-api'].includes(raw.metadataSource) ? raw.metadataSource : 'basic',

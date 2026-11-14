@@ -27,7 +27,7 @@
         <div>
           <div class="eyebrow">YOUR WEB, COLLECTED</div>
           <h1>Bookmarks<span class="title-count" id="totalCount">0</span></h1>
-          <p>Save links with previews and useful details. Everything stays in this browser.</p>
+          <p>Collect the web. Every link gets its own cover — no thumbnails required.</p>
         </div>
       </section>
 
@@ -69,7 +69,21 @@
         <label>URL<input name="url" type="url" required /></label>
         <label>Description<textarea name="description" rows="2" maxlength="5000"></textarea></label>
         <div class="two-fields"><label>Author<input name="author" type="text" maxlength="300" /></label><label>Publication date<input name="published" type="date" /></label></div>
-        <label>Preview image URL<input name="image" type="url" placeholder="https://..." /></label>
+        <div class="cover-editor">
+          <div class="cover-editor-head"><div><strong>COVER</strong><span>Image or generated identity</span></div><span class="cover-editor-marker">LINKBOOK / 02</span></div>
+          <div id="coverEditorPreview" class="cover-editor-preview" aria-label="Cover preview"></div>
+          <label>Cover appearance
+            <select name="coverMode">
+              <option value="auto">Automatic — image when available, otherwise graphic</option>
+              <option value="graphic">Graphic cover — always use designed identity</option>
+              <option value="custom">Custom — uploaded image or image URL</option>
+            </select>
+          </label>
+          <div class="cover-upload-row"><label class="upload-cover-button" for="coverUpload">Choose image <span>PNG · JPG · WebP</span></label><input id="coverUpload" name="coverUpload" type="file" accept="image/png,image/jpeg,image/webp" hidden /><button id="clearCoverButton" type="button" class="clear-cover-button">Use graphic</button></div>
+          <label>Custom image URL<input name="customCoverUrl" type="url" placeholder="https://..." /></label>
+          <details><summary>Original webpage image URL (optional)</summary><label>Extracted image URL<input name="image" type="url" placeholder="https://..." /></label></details>
+          <p class="cover-editor-note">Uploaded images are resized and saved in this browser. No external service is used.</p>
+        </div>
         <label>Tags <span class="helper">(comma separated)</span><input name="tags" type="text" placeholder="Design, Research, References" /></label>
         <label>Notes<textarea name="notes" rows="3" placeholder="Why did you save this?" maxlength="10000"></textarea></label>
         <div id="detailMetadataStatus" class="detail-help"></div>
