@@ -4,3 +4,6 @@
 @media(max-width:700px){.hero{padding:67px 0 72px}.project-grid{grid-template-columns:1fr}.project-card{min-height:300px}.header-type{display:none}.section-header{align-items:flex-start}.search{width:180px}.card-symbol{font-size:68px}footer{display:block}footer span:last-child{display:block;margin-top:6px}}
 @media(max-width:420px){.topbar{height:69px}.brand-name{font-size:11px}.hero{padding:54px 0 62px}.hero h1{font-size:56px}.lead{font-size:14px}.section-header{flex-wrap:wrap}.search{width:100%;max-width:none}.section-label{width:100%}.project-card{min-height:292px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
+
+/* Hide the native install action unless the browser offers installation. */
+.install-link[hidden]{display:none}

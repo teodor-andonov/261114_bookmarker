@@ -68,3 +68,31 @@ fetch('./catalog.json', { cache: 'no-cache' })
     search.disabled = true;
     search.placeholder = 'Search unavailable in source preview';
   });
+
+// Install the root gallery as its own PWA; each dated prototype remains independent.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(error => {
+      console.warn('Testlab offline shell could not be registered:', error);
+    });
+  });
+}
+
+const installButton = document.getElementById('installButton');
+let pendingInstall = null;
+window.addEventListener('beforeinstallprompt', event => {
+  event.preventDefault();
+  pendingInstall = event;
+  installButton.hidden = false;
+});
+installButton.addEventListener('click', async () => {
+  if (!pendingInstall) return;
+  const install = pendingInstall;
+  pendingInstall = null;
+  installButton.hidden = true;
+  await install.prompt();
+});
+window.addEventListener('appinstalled', () => {
+  pendingInstall = null;
+  installButton.hidden = true;
+});

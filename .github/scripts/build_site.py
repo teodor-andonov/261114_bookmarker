@@ -13,8 +13,9 @@ def main():
     if OUTPUT.exists():
         shutil.rmtree(OUTPUT)
     OUTPUT.mkdir()
-    for name in ("index.html", "site.css", "site.js"):
+    for name in ("index.html", "site.css", "site.js", "manifest.webmanifest", "sw.js"):
         shutil.copy2(ROOT / name, OUTPUT / name)
+    shutil.copytree(ROOT / "icons", OUTPUT / "icons")
     (OUTPUT / ".nojekyll").touch()
     projects = []
     for folder in sorted(ROOT.iterdir(), reverse=True):

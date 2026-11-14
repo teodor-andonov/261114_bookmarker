@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f8f8f6">
   <meta name="description" content="Testlab — an evolving collection of independent app prototypes and experiments.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="./icons/testlab.svg">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Testlab">
   <link rel="stylesheet" href="./site.css">
   <title>Testlab · App Prototypes</title>
 </head>
@@ -12,7 +17,7 @@
   <div class="shell">
     <header class="topbar">
       <a href="./" class="brand" aria-label="Testlab home"><span class="mark" aria-hidden="true">T<span class="mark-dot">.</span></span><span class="brand-name">TESTLAB</span></a>
-      <div class="header-right"><span class="header-type">PROTOTYPE INDEX</span><a id="repoLink" class="source-link" href="https://github.com/teodor-andonov/261114_testlab" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a></div>
+      <div class="header-right"><span class="header-type">PROTOTYPE INDEX</span><button id="installButton" type="button" class="source-link install-link" hidden>Install <span aria-hidden="true">↓</span></button><a id="repoLink" class="source-link" href="https://github.com/teodor-andonov/261114_testlab" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a></div>
     </header>
     <main>
       <section class="hero" aria-labelledby="page-title">
