@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#151817">
+  <meta name="description" content="Transcribe audio privately in your browser using Whisper.">
+  <title>Audio → Text · Testlab</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a href="../" class="back-link" aria-label="Back to Testlab"><span aria-hidden="true">↖</span><span>TESTLAB</span></a>
+      <div class="brand"><span class="sound-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><span>TRANSCRIBE<span class="brand-version">/ 02</span></span></div>
+      <span class="private-indicator"><span class="status-led"></span> ON-DEVICE</span>
+    </header>
+    <main>
+      <section class="hero">
+        <div class="kicker">EXPERIMENT 02 <span>—</span> BROWSER AI</div>
+        <h1>Audio <span class="arrow">→</span> Text<span class="period">.</span></h1>
+        <p>Drop a recording, run Whisper locally, and take the words with you. No account. No transcription server.</p>
+      </section>
+      <div class="workspace">
+        <section class="panel input-panel" aria-labelledby="source-heading">
+          <div class="section-title"><span class="section-index">01</span><h2 id="source-heading">Source audio</h2></div>
+          <input type="file" id="fileInput" accept="audio/*,.wav,.mp3,.m4a,.mp4,.aac,.ogg,.flac,.webm" hidden>
+          <div id="dropZone" class="drop-zone" tabindex="0" role="button" aria-label="Choose an audio file">
+            <span class="upload-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <strong>Drop an audio recording</strong>
+            <span>or <span class="linkish">browse files</span> to upload</span>
+            <small>MP3 · WAV · M4A · WebM · browser-supported audio</small>
+          </div>
+          <div class="record-row">
+            <button id="recordButton" type="button" class="secondary-button"><span class="record-dot" aria-hidden="true"></span><span id="recordLabel">Record microphone</span></button>
+            <span id="recordTime" class="timecode" aria-live="off"></span>
+          </div>
+          <div id="fileDetails" class="file-details" hidden>
+            <div class="file-heading"><span class="file-glyph">♫</span><div class="file-info"><strong id="fileName"></strong><span id="fileMeta"></span></div><button class="icon-button" id="removeFile" title="Remove file" aria-label="Remove file" type="button">×</button></div>
+            <audio id="audioPlayer" controls preload="metadata"></audio>
+          </div>
+          <div class="divider"></div>
+          <div class="section-title settings-head"><span class="section-index">02</span><h2>Recognition settings</h2></div>
+          <div class="setting-grid">
+            <label class="setting"><span>Model</span><select id="modelSelect"><option value="multilingual">Whisper Tiny · Multilingual</option><option value="english">Whisper Tiny · English only</option></select></label>
+            <label class="setting"><span>Spoken language</span><select id="languageSelect"><option value="auto">Auto-detect</option><option value="english">English</option><option value="bulgarian">Bulgarian</option><option value="spanish">Spanish</option><option value="french">French</option><option value="german">German</option><option value="italian">Italian</option><option value="portuguese">Portuguese</option></select></label>
+            <label class="setting full"><span>Processing</span><select id="deviceSelect"><option value="wasm">CPU · Most compatible</option><option value="webgpu">GPU · Experimental, when supported</option></select></label>
+          </div>
+          <button id="transcribeButton" class="primary-button" type="button" disabled><span id="transcribeLabel">Transcribe audio</span><span aria-hidden="true">↗</span></button>
+          <button id="cancelButton" class="cancel-button" type="button" hidden>Cancel transcription</button>
+          <div class="process-status" aria-live="polite"><div class="status-line"><span id="statusText">Choose a file to begin</span><span id="statusPercent"></span></div><div class="progress-track"><span id="progressFill"></span></div></div>
+          <p class="hint">The speech model downloads on first use. Your recording stays on this device. For the best experience, start with clips under 5 minutes.</p>
+        </section>
+        <section class="panel output-panel" aria-labelledby="result-heading">
+          <div class="output-head"><div class="section-title"><span class="section-index">03</span><h2 id="result-heading">Transcript</h2></div><span id="resultState" class="result-state">EMPTY</span></div>
+          <textarea id="transcript" spellcheck="true" aria-label="Editable transcript" placeholder="Your transcript will appear here. You can edit it before copying or exporting." disabled></textarea>
+          <div class="output-actions"><button class="secondary-button" id="copyButton" disabled>Copy text</button><button class="secondary-button" id="txtButton" disabled>Download .txt</button><button class="secondary-button" id="srtButton" disabled title="Export original timed segments">Download .srt</button></div>
+          <div class="segments-head"><h3>Timed segments</h3><span id="segmentCount">—</span></div>
+          <div id="segments" class="segments"><p class="segments-placeholder">Time-linked phrases will appear after transcription. Tap a timestamp to seek in the audio.</p></div>
+          <p class="output-note">Text is editable. SRT uses the original timed segments, not edits made above. Export before closing: transcripts are not stored.</p>
+        </section>
+      </div>
+      <section class="bottom-bar"><span>WHISPER TINY / TRANSFORMERS.JS</span><span>LOCALLY PROCESSED AUDIO · GITHUB PAGES</span></section>
+    </main>
+  </div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
