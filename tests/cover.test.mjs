@@ -2,12 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { coverIdentity, coverImage, isLocalCover } from '../cover.js';
 
-test('same website has a stable colour identity and distinct page editions', () => {
-  const a = coverIdentity({url:'https://example.com/one',title:'One'});
-  const b = coverIdentity({url:'https://example.com/two',title:'Two'});
-  assert.equal(a.tone,b.tone);
-  assert.equal(a.brand, b.brand);
-  assert.notEqual(a.edition, b.edition);
+test('simple covers derive domain and page title without colours or patterns', () => {
+  const a = coverIdentity({url:'https://www.example.com/one',title:'One interesting article'});
+  const b = coverIdentity({url:'https://example.com/two',title:'Another article'});
+  assert.equal(a.host, 'example.com');
+  assert.equal(a.host, b.host);
+  assert.equal(a.title, 'One interesting article');
+  assert.equal(b.title, 'Another article');
+  assert.deepEqual(Object.keys(a).sort(), ['host', 'title']);
 });
 
 test('graphic cover overrides a real remote image', () => {
@@ -29,8 +31,7 @@ test('custom cover rejects SVG and scriptable data URLs', () => {
   assert.equal(isLocalCover('data:text/html;base64,PHA+'),false);
 });
 
-test('classifies common sources for recognisable cards', () => {
-  assert.equal(coverIdentity({url:'https://github.com/org/repo'}).kind,'CODE');
-  assert.equal(coverIdentity({url:'https://www.youtube.com/watch?v=aaaaaaaaaaa'}).kind,'VIDEO');
-  assert.equal(coverIdentity({url:'https://example.com/file.pdf'}).kind,'DOCUMENT');
+test('missing page titles fall back to the domain', () => {
+  assert.equal(coverIdentity({url:'https://github.com/org/repo'}).title, 'github.com');
+  assert.equal(coverIdentity({url:'https://www.youtube.com/watch?v=aaaaaaaaaaa'}).host, 'youtube.com');
 });

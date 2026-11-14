@@ -1,4 +1,4 @@
-const CACHE_NAME = 'linkbook-shell-v3';
+const CACHE_NAME = 'linkbook-shell-v4';
 const PRECACHE = ['', 'index.html', 'styles.css', 'app.js', 'db.js', 'metadata.js', 'cover.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
 const scope = self.registration.scope;
 

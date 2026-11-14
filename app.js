@@ -52,12 +52,15 @@ const externalIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4
 function coverMarkup(bookmark) {
   const cover = coverIdentity(bookmark);
   const photo = coverImage(bookmark);
-  return `<div class="preview" aria-label="Cover for ${escapeHtml(bookmark.title || cover.host)}">
-    <div class="preview-art cover-tone-${cover.tone} cover-pattern-${cover.pattern}">
-      <span class="cover-ornament" aria-hidden="true"></span>
-      <div class="cover-top"><span class="cover-series">LB—${cover.edition}</span><span class="cover-kind">${escapeHtml(cover.kind)}</span></div>
-      <div class="cover-center"><div class="cover-brand">${escapeHtml(cover.brand)}</div><div class="cover-subtitle">${escapeHtml(cover.title)}</div></div>
-      <div class="cover-bottom"><span class="cover-host">${escapeHtml(cover.host)}</span><span class="cover-mark" aria-hidden="true">↗</span></div>
+  const icon = safeImageUrl(bookmark.favicon, bookmark.url);
+  const favicon = icon ? `<img class="simple-cover-favicon" src="${escapeHtml(icon)}" loading="lazy" referrerpolicy="no-referrer" alt="" />` : '';
+  return `<div class="preview" aria-label="Cover for ${escapeHtml(cover.title)}">
+    <div class="preview-art simple-cover">
+      <div class="simple-cover-site">
+        ${favicon}<span class="simple-cover-favicon-fallback" aria-hidden="true">${escapeHtml((cover.host[0] || 'L').toUpperCase())}</span>
+        <span class="simple-cover-domain">${escapeHtml(cover.host)}</span>
+      </div>
+      <div class="simple-cover-title">${escapeHtml(cover.title)}</div>
     </div>
     ${photo ? `<img class="preview-image" src="${escapeHtml(photo)}" loading="lazy" referrerpolicy="no-referrer" alt="" />` : ''}
   </div>`;
@@ -65,10 +68,11 @@ function coverMarkup(bookmark) {
 
 function cardHtml(b) {
   const domain = domainOf(b.url);
+  const hasPhoto = Boolean(coverImage(b));
   const icon = safeImageUrl(b.favicon, b.url);
   const favicon = icon ? `<img class="favicon" src="${escapeHtml(icon)}" loading="lazy" referrerpolicy="no-referrer" alt="" />` : '<span class="favicon is-hidden"></span>';
   const tags = (b.tags || []).slice(0, 3).map(tag => `<span class="inline-tag">${escapeHtml(tag)}</span>`).join('');
-  return `<article class="bookmark-card" data-id="${escapeHtml(b.id)}">
+  return `<article class="bookmark-card ${hasPhoto ? '' : 'no-cover-image'}" data-id="${escapeHtml(b.id)}">
     ${coverMarkup(b)}
     <div class="bookmark-body">
       <div class="bookmark-meta">${favicon}<span class="favicon-fallback">${escapeHtml((domain[0] || 'L').toUpperCase())}</span><span class="domain" title="${escapeHtml(domain)}">${escapeHtml(b.siteName || domain)}</span></div>
@@ -153,7 +157,7 @@ function coverDraft() {
 function updateCoverPreview() {
   if (state.selectedId) {
     els.coverPreview.innerHTML = coverMarkup(coverDraft());
-    // Ensure a URL that fails to load gives way to the designed cover.
+    // If an image fails, reveal the neutral text/favicon cover.
     const img = els.coverPreview.querySelector('.preview-image');
     if (img) img.addEventListener('error', () => img.classList.add('is-hidden'));
   }
@@ -167,7 +171,7 @@ function fillEditor(bookmark) {
   formControl('customCoverUrl').value = bookmark.customCoverUrl || '';
   els.coverUpload.value = '';
   els.metadataStatus.textContent = bookmark.metadataSource === 'basic'
-    ? 'Most pages block browser metadata requests. Graphic covers work for every link; custom images stay only in this browser.'
+    ? 'Most pages block browser metadata requests. Simple covers work for every link; custom images stay only in this browser.'
     : `Metadata source: ${bookmark.metadataSource === 'github-api' ? 'GitHub public API' : 'page HTML'}. Custom covers survive metadata refresh.`;
   updateCoverPreview();
 }
@@ -253,7 +257,7 @@ els.clearCover.addEventListener('click', () => {
   state.coverUploadData = '';
   formControl('customCoverUrl').value = '';
   formControl('coverMode').value = 'graphic';
-  els.metadataStatus.textContent = 'Custom cover cleared. The graphic cover will be used when you save.';
+  els.metadataStatus.textContent = 'Custom cover cleared. The simple cover will be used when you save.';
   updateCoverPreview();
 });
 
