@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f7f7f5" />
+  <meta name="description" content="A local-first bookmark library that lives in your browser." />
+  <link rel="icon" type="image/png" href="./icons/icon-192.png" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="stylesheet" href="./styles.css" />
+  <title>Linkbook — bookmarks, locally</title>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-symbol" aria-hidden="true">L<span class="brand-dot">.</span></span><div class="brand-label"><strong>LINKBOOK</strong><small>PERSONAL LIBRARY</small></div></div>
+      <div class="top-actions">
+        <span class="local-label"><span class="local-dot"></span> Local only</span>
+        <button id="importButton" class="button ghost small" type="button" title="Import a JSON backup">Import</button>
+        <button id="exportButton" class="button ghost small" type="button" title="Download a JSON backup">Export</button>
+        <input id="importFile" type="file" accept="application/json,.json" hidden />
+      </div>
+    </header>
+
+    <main>
+      <section class="intro">
+        <div>
+          <div class="eyebrow">YOUR WEB, COLLECTED</div>
+          <h1>Bookmarks<span class="title-count" id="totalCount">0</span></h1>
+          <p>Save links with previews and useful details. Everything stays in this browser.</p>
+        </div>
+      </section>
+
+      <form id="addForm" class="add-bar" autocomplete="off">
+        <span class="input-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></span>
+        <label for="urlInput" class="sr-only">URL to bookmark</label>
+        <input id="urlInput" type="url" inputmode="url" placeholder="Paste a link to save..." required />
+        <button id="addButton" class="button primary" type="submit"><span class="plus">+</span> Save link</button>
+      </form>
+      <p id="message" class="message" aria-live="polite"></p>
+
+      <section class="controls" aria-label="Bookmark controls">
+        <label class="search" for="searchInput"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg><input id="searchInput" type="search" placeholder="Search your links..." /></label>
+        <div class="control-right">
+          <label class="sr-only" for="sortSelect">Sort bookmarks</label>
+          <select id="sortSelect" class="select" aria-label="Sort bookmarks"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="title">Title A–Z</option><option value="domain">By website</option></select>
+          <div class="view-toggle" role="group" aria-label="View type">
+            <button id="gridButton" type="button" aria-label="Grid view" title="Grid view" class="view-button active"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+            <button id="listButton" type="button" aria-label="List view" title="List view" class="view-button"><svg viewBox="0 0 24 24"><path d="M9 5h12M9 12h12M9 19h12"/><path d="M3 5h2M3 12h2M3 19h2"/></svg></button>
+          </div>
+        </div>
+      </section>
+      <div id="tagFilters" class="tag-filters" aria-label="Filter by tag"></div>
+      <section id="bookmarkList" class="bookmark-grid" aria-label="Saved bookmarks"></section>
+      <div id="emptyState" class="empty-state" hidden>
+        <div class="empty-symbol" aria-hidden="true">⌑</div>
+        <h2 id="emptyTitle">Nothing saved yet.</h2>
+        <p id="emptyDescription">Paste a URL above or share a link from Android to start collecting.</p>
+      </div>
+    </main>
+    <footer class="footer"><span>LINKBOOK · Prototype 01</span><span>No account · No sync · Back up with Export</span></footer>
+  </div>
+
+  <dialog id="detailDialog" class="detail-dialog">
+    <form id="detailForm" class="detail-form">
+      <div class="dialog-heading"><div><div class="eyebrow">BOOKMARK DETAILS</div><h2>Edit bookmark</h2></div><button id="closeDialog" type="button" class="icon-button" aria-label="Close">×</button></div>
+      <div class="dialog-fields">
+        <label>Title<input name="title" type="text" required maxlength="500" /></label>
+        <label>URL<input name="url" type="url" required /></label>
+        <label>Description<textarea name="description" rows="2" maxlength="5000"></textarea></label>
+        <div class="two-fields"><label>Author<input name="author" type="text" maxlength="300" /></label><label>Publication date<input name="published" type="date" /></label></div>
+        <label>Preview image URL<input name="image" type="url" placeholder="https://..." /></label>
+        <label>Tags <span class="helper">(comma separated)</span><input name="tags" type="text" placeholder="Design, Research, References" /></label>
+        <label>Notes<textarea name="notes" rows="3" placeholder="Why did you save this?" maxlength="10000"></textarea></label>
+        <div id="detailMetadataStatus" class="detail-help"></div>
+      </div>
+      <div class="dialog-actions"><button id="deleteButton" class="button danger" type="button">Delete</button><button id="refreshButton" class="button ghost" type="button">Retry metadata</button><span class="flex-spacer"></span><button class="button primary" type="submit">Save changes</button></div>
+    </form>
+  </dialog>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

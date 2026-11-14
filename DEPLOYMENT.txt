@@ -1,0 +1,10 @@
+LINKBOOK — STATIC PWA SOURCE
+
+Repository: https://github.com/teodor-andonov/261114_bookmarker
+Site:       https://teodor-andonov.github.io/261114_bookmarker/
+
+GitHub Pages: Settings -> Pages -> Source -> GitHub Actions.
+Deployment workflow: .github/workflows/deploy.yml (push to main).
+
+No server or cloud synchronization. Data is stored locally in each browser; export backups regularly.
+See README.md for details and limitations.

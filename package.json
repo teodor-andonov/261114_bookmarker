@@ -1,0 +1,11 @@
+{
+  "name": "linkbook-pwa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A dependency-free, browser-only bookmark PWA",
+  "scripts": {
+    "dev": "node dev-server.mjs",
+    "test": "node --test tests/*.test.mjs"
+  }
+}
