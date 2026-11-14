@@ -10,34 +10,41 @@
 @media(max-width:510px){.shell{padding:0 14px}.topbar{height:68px}.brand-label small{display:none}.top-actions{gap:3px}.top-actions .button{padding:8px}.intro{padding:35px 0 22px}.intro h1{font-size:44px}.intro p{font-size:12px;line-height:1.5}.add-bar{height:58px;padding:5px 5px 5px 12px}.add-bar .button{height:46px;padding:0 11px;font-size:12px}.add-bar .plus{display:none}.input-icon{margin-right:9px}.input-icon svg{width:17px}.add-bar input{font-size:12px}.controls{gap:7px}.search{height:39px}.control-right{gap:6px}.select{max-width:112px;font-size:11px;padding:0 7px;height:39px}.view-toggle{height:39px}.view-button{height:29px;width:28px}.bookmark-grid{gap:9px}.bookmark-body{padding:10px}.bookmark-body h3{min-height:36px;font-size:12px}.bookmark-meta{margin-bottom:8px}.description{font-size:11px}.preview-letter{font-size:54px}.bookmark-foot{font-size:9px}.date-added{white-space:normal}.tiny-action{height:27px;width:27px}.list-view .preview{width:92px;min-width:92px}.list-view .bookmark-body{padding:10px;display:block}.list-view .bookmark-meta{margin-bottom:6px}.list-view .description{display:none}.list-view .bookmark-foot{display:flex;margin-top:7px;border:0;padding-top:0;justify-content:space-between}.list-view .bookmark-body h3{font-size:12px}.footer{margin-top:60px;display:block;line-height:1.8}.footer span+span{display:block}.two-fields{grid-template-columns:1fr}.detail-form{padding:18px}.dialog-actions{justify-content:flex-end}.dialog-actions .flex-spacer{display:none}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
 
-/* Linkbook covers: intentionally neutral, no arbitrary colours or patterns. */
+/* Linkbook fallback cover: large website favicon, bold domain, restrained page title. */
 .preview-art.simple-cover {
   position:absolute; inset:0; display:flex; flex-direction:column;
-  align-items:stretch; justify-content:space-between;
-  padding:18px 20px; gap:12px; color:#2d3331;
+  align-items:center; justify-content:center;
+  padding:16px 17px 12px; gap:0; color:#2d3331;
   background:#f0f1ee; isolation:isolate; overflow:hidden;
 }
 .preview-art.simple-cover::before,.preview-art.simple-cover::after {content:none}
-.simple-cover-site {display:flex; gap:9px; align-items:center; min-width:0}
+.simple-cover-identity {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  flex:1; width:100%; min-width:0; min-height:0; gap:10px;
+}
+.simple-cover-icon {width:72px;height:72px;flex:none;display:grid;place-items:center}
 .simple-cover-favicon,.simple-cover-favicon-fallback {
-  width:23px; height:23px; border-radius:5px; flex:0 0 23px;
-  object-fit:contain; background:#fff; padding:2px; border:1px solid #e0e2dd;
+  width:100%;height:100%;object-fit:contain;
 }
 .simple-cover-favicon.is-hidden {display:none}
 .simple-cover-favicon-fallback {
-  display:grid; place-items:center; color:#656c66;
-  font-size:12px; font-weight:750; line-height:1; text-transform:uppercase;
+  display:grid; place-items:center; border-radius:16px;
+  background:#fff; border:1px solid #dfe2dc;
+  color:#505853; font-size:38px; font-weight:760; line-height:1;
+  text-transform:uppercase;
 }
 .simple-cover-favicon:not(.is-hidden)+.simple-cover-favicon-fallback {display:none}
 .simple-cover-domain {
-  min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  font-size:11px; letter-spacing:.005em; color:#747b75; font-weight:600;
+  display:block; min-width:0; max-width:100%; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; text-align:center;
+  font-size:clamp(16px,1.8vw,23px); letter-spacing:-.045em;
+  color:#292f2b; font-weight:800; line-height:1.1;
 }
 .simple-cover-title {
-  font-size:clamp(15px,1.85vw,24px); line-height:1.2; font-weight:720;
-  letter-spacing:-.035em; overflow:hidden; min-width:0; margin:auto 0;
-  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3;
-  overflow-wrap:anywhere;
+  flex:none; width:100%; margin-top:8px; min-width:0;
+  color:#777e79; text-align:center; font-size:11px; line-height:1.3;
+  font-weight:520; display:-webkit-box; -webkit-box-orient:vertical;
+  -webkit-line-clamp:2; overflow:hidden; overflow-wrap:anywhere;
 }
 .cover-editor {border-radius:13px;border:1px solid #e1e3dc;background:#f7f8f4;padding:15px;display:flex;flex-direction:column;gap:12px}
 .cover-editor-head {display:flex;justify-content:space-between;gap:8px;align-items:center}
@@ -45,7 +52,7 @@
 .cover-editor-head span {color:#818883;font-size:11px}.cover-editor-marker{font:600 9px ui-monospace,SFMono-Regular,Consolas,monospace;color:#929892}
 .cover-editor-preview {align-self:center;width:min(100%,350px);border-radius:10px;overflow:hidden;box-shadow:0 8px 18px #17211918}
 .cover-editor-preview .preview {width:100%;aspect-ratio:1.57}
-.cover-editor-preview .simple-cover-title {font-size:22px}
+.cover-editor-preview .simple-cover-title {font-size:12px}
 .cover-editor select {width:100%;min-height:38px;background:#fff;border:1px solid #dddeda;border-radius:8px;padding:8px;color:#303630;font-size:12px}
 .cover-editor .cover-upload-row {display:flex;gap:8px;align-items:stretch}
 .cover-upload-row .upload-cover-button {display:flex;flex:1;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;padding:10px 12px;color:#fff;background:#292e2c;border-radius:8px;font-size:12px;font-weight:650}
@@ -55,18 +62,28 @@
 .cover-editor details label {margin-top:10px}
 .cover-editor .cover-editor-note {margin:0;color:#858c84;font-size:11px;line-height:1.5}
 .bookmark-card .preview {background:#f0f1ee}
-@media(max-width:770px){.preview-art.simple-cover{padding:13px 14px}.simple-cover-title{font-size:clamp(14px,2.4vw,20px)}}
+@media(max-width:770px){
+  .preview-art.simple-cover{padding:12px 12px 9px}
+  .simple-cover-icon{width:58px;height:58px}
+  .simple-cover-domain{font-size:clamp(14px,2.6vw,20px)}
+  .simple-cover-identity{gap:7px}
+  .simple-cover-title{font-size:10px}
+}
 @media(max-width:510px){
-  .preview-art.simple-cover{padding:10px 11px;gap:6px}
-  .simple-cover-site{gap:5px}
-  .simple-cover-favicon,.simple-cover-favicon-fallback{width:18px;height:18px;flex-basis:18px;padding:1px;font-size:10px}
-  .simple-cover-domain{font-size:9px}
-  .simple-cover-title{font-size:13px;line-height:1.2;-webkit-line-clamp:3}
-  .list-view .preview-art.simple-cover{padding:7px 6px;gap:4px}
-  .list-view .simple-cover-title{font-size:10px;letter-spacing:-.015em;-webkit-line-clamp:3}
-  .list-view .simple-cover-domain{font-size:8px}
-  .list-view .simple-cover-favicon,.list-view .simple-cover-favicon-fallback{width:14px;height:14px;flex-basis:14px}
-  .cover-editor-preview .simple-cover-title{font-size:20px}
+  .preview-art.simple-cover{padding:7px 8px 6px}
+  .simple-cover-icon{width:42px;height:42px}
+  .simple-cover-favicon-fallback{border-radius:10px;font-size:24px}
+  .simple-cover-domain{font-size:14px;letter-spacing:-.04em}
+  .simple-cover-identity{gap:5px}
+  .simple-cover-title{font-size:9px;line-height:1.15;margin-top:4px;-webkit-line-clamp:2}
+  .list-view .preview-art.simple-cover{padding:9px 5px}
+  .list-view .simple-cover-icon{width:34px;height:34px}
+  .list-view .simple-cover-favicon-fallback{font-size:20px;border-radius:8px}
+  .list-view .simple-cover-domain{font-size:10px}
+  .list-view .simple-cover-title{display:none}
+  .cover-editor-preview .simple-cover-icon{width:68px;height:68px}
+  .cover-editor-preview .simple-cover-domain{font-size:20px}
+  .cover-editor-preview .simple-cover-title{font-size:11px}
   .cover-editor{padding:11px}.cover-upload-row .upload-cover-button span{display:none}
 }
 

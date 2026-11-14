@@ -68,3 +68,7 @@ When you host this app on a **public GitHub repository**, the *app code* is publ
 ## Stack
 
 Vanilla HTML / CSS / JavaScript modules, IndexedDB, web manifest, service worker, static GitHub Pages deployment via Actions. No frontend framework or npm dependencies.
+
+## Minimal cover design
+
+For bookmarks without a usable image, the cover shows a large favicon (or neutral initial if unavailable), bold website domain, and a smaller page title. No generated colours or decorative patterns.
