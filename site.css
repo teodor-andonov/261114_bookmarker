@@ -7,3 +7,47 @@
 
 /* Hide the native install action unless the browser offers installation. */
 .install-link[hidden]{display:none}
+
+/* Gallery-only colour system; child prototype stylesheets are completely independent. */
+.theme-switch {
+  display:grid; place-items:center; width:40px; height:40px; flex:none;
+  background:var(--card); border:1px solid var(--line); border-radius:8px;
+  color:var(--ink); cursor:pointer; font-size:22px; line-height:1;
+}
+.theme-switch:hover {filter:brightness(.95)}
+.theme-switch:focus-visible {outline:3px solid #9babb2;outline-offset:2px}
+:root[data-theme="light"] { color-scheme:light }
+:root[data-theme="dark"] {
+  color-scheme:dark;
+  --paper:#141715; --card:#202522; --ink:#e7eae5; --line:#353c36;
+  --muted:#a1aaa2; --soft:#262d28;
+  background:var(--paper);
+}
+:root[data-theme="dark"] .mark {background:#e2e8e0;color:#172019}
+:root[data-theme="dark"] .mark-dot {color:#778c7a}
+:root[data-theme="dark"] .source-link,
+:root[data-theme="dark"] .search,
+:root[data-theme="dark"] .project-card,
+:root[data-theme="dark"] .theme-switch {background:var(--card);border-color:var(--line);color:var(--ink)}
+:root[data-theme="dark"] .source-link:hover {background:#2c342e}
+:root[data-theme="dark"] .theme-switch:hover {background:#2c342e;filter:none}
+:root[data-theme="dark"] .project-card:hover {border-color:#67756a;box-shadow:0 12px 28px #0004}
+:root[data-theme="dark"] .header-type,
+:root[data-theme="dark"] .eyebrow,
+:root[data-theme="dark"] .lead,
+:root[data-theme="dark"] .card-number,
+:root[data-theme="dark"] .card-category,
+:root[data-theme="dark"] .card-bottom p,
+:root[data-theme="dark"] footer {color:#a7afa7}
+:root[data-theme="dark"] .card-symbol {color:#798a7b}
+:root[data-theme="dark"] .period {color:#849589}
+:root[data-theme="dark"] .count {background:#2e3a30;color:#c5d3c6}
+:root[data-theme="dark"] .status {background:#28332a;border-color:#3b4b3e;color:#c0d4c0}
+:root[data-theme="dark"] .status-dot,
+:root[data-theme="dark"] .online-dot {background:#93b39b}
+:root[data-theme="dark"] .search input {color:var(--ink)}
+:root[data-theme="dark"] .search input::placeholder {color:#929d94}
+:root[data-theme="dark"] .visit-arrow {color:#b0bdb2}
+:root[data-theme="dark"] .sep,
+:root[data-theme="dark"] .footer-divider {color:#677669}
+@media(max-width:700px){.header-right{gap:8px}.theme-switch{width:36px;height:36px}}

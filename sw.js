@@ -1,8 +1,9 @@
 // Offline shell for the Testlab gallery only. Prototype folders own their own runtime.
-const CACHE_NAME = 'testlab-gallery-v1';
+const CACHE_NAME = 'testlab-gallery-v2';
 const ROOT_FILES = ['','index.html','site.css','site.js','catalog.json','manifest.webmanifest',
                     'icons/icon-192.png','icons/icon-512.png','icons/testlab.svg'];
 const scopeUrl = new URL(self.registration.scope);
+if (!scopeUrl.pathname.endsWith('/')) throw new Error('Testlab worker must have a directory scope.');
 const rootUrl = new URL('index.html', scopeUrl).href;
 
 self.addEventListener('install', event => {

@@ -1,3 +1,26 @@
+
+const themeToggle = document.getElementById('themeToggle');
+const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+const themeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+const savedTheme = () => {
+  try { const value = localStorage.getItem('testlab-theme'); return value === 'light' || value === 'dark' ? value : null; }
+  catch { return null; }
+};
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeToggle.setAttribute('aria-pressed', String(theme === 'dark'));
+  themeToggle.title = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+  themeToggle.querySelector('span').textContent = theme === 'dark' ? '☀' : '☾';
+  if (themeColorMeta) themeColorMeta.content = theme === 'dark' ? '#141715' : '#f8f8f6';
+}
+setTheme(savedTheme() || (themeMedia.matches ? 'dark' : 'light'));
+themeToggle.addEventListener('click', () => {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  try { localStorage.setItem('testlab-theme', next); } catch { /* preference is optional */ }
+  setTheme(next);
+});
+themeMedia.addEventListener?.('change', e => { if (!savedTheme()) setTheme(e.matches ? 'dark' : 'light'); });
+
 const list = document.getElementById('prototypeList');
 const count = document.getElementById('projectCount');
 const search = document.getElementById('filterInput');
@@ -72,7 +95,7 @@ fetch('./catalog.json', { cache: 'no-cache' })
 // Install the root gallery as its own PWA; each dated prototype remains independent.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(error => {
+    navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(error => {
       console.warn('Testlab offline shell could not be registered:', error);
     });
   });

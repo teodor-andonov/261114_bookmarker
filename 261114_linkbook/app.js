@@ -107,7 +107,7 @@ function render() {
   els.empty.hidden = bookmarks.length !== 0;
   if (state.bookmarks.length === 0) {
     els.emptyTitle.textContent = 'Nothing saved yet.';
-    els.emptyDescription.textContent = 'Paste a URL above or share a link from Android to start collecting.';
+    els.emptyDescription.textContent = 'Paste a URL above to start collecting.';
   } else {
     els.emptyTitle.textContent = 'No matching bookmarks.';
     els.emptyDescription.textContent = 'Try another search or tag filter.';
@@ -388,8 +388,18 @@ async function processShareTarget() {
 async function initialize() {
   try { await reload(); await processShareTarget(); }
   catch (error) { notify(`Local storage unavailable: ${error.message}. Check browser settings.`, 'error'); els.addButton.disabled = true; }
-  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-    navigator.serviceWorker.register('./sw.js').catch(error => console.warn('Offline support unavailable:', error));
+  // Retire this prototype's former PWA worker only. Other apps on the
+  // same GitHub Pages origin, including the Testlab gallery, are untouched.
+  if ('serviceWorker' in navigator) {
+    const retiredScope = new URL('./', import.meta.url).href;
+    navigator.serviceWorker.getRegistrations()
+      .then(regs => Promise.all(regs.filter(reg => reg.scope === retiredScope).map(reg => reg.unregister())))
+      .catch(error => console.warn('Legacy Linkbook worker cleanup skipped:', error));
+  }
+  if ('caches' in window) {
+    caches.keys().then(keys => Promise.all(
+      keys.filter(key => key.startsWith('testlab-linkbook-')).map(key => caches.delete(key))
+    )).catch(() => {});
   }
 }
 initialize();

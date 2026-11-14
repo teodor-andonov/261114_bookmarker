@@ -1,33 +1,22 @@
-# Linkbook — browser-only bookmark PWA
+# Linkbook — browser-only bookmark prototype
 
-Standalone prototype inside Testlab. All runtime files, PWA assets and browser data logic live in this directory. No backend, account, server or shared Testlab libraries are required.
+An ordinary web application inside Testlab; **not an independently installed PWA**. No backend, account, dedicated server, app manifest or active service worker is needed.
 
-## Features
-
-- Paste links, or use the Android Share Target when installed.
-- Best-effort website metadata, image and favicon previews (direct cross-origin HTML access is often blocked by CORS).
-- YouTube thumbnail URLs and public GitHub repository metadata.
-- Neutral favicon/domain/title fallback covers; custom image upload or image URL override.
-- Grid and list views, search, sorting, tags, notes, edits and deletion.
-- IndexedDB persistence, JSON backup/restore and offline app shell.
+Features include direct URL input, best-effort metadata, YouTube thumbnails, favicon/domain/title fallback covers, manual covers, search, tags, notes, local IndexedDB, and JSON import/export. Metadata is limited by CORS; this does not add an external metadata API.
 
 ## Development
-
-From this folder:
 
 ```bash
 npm run dev
 npm test
 ```
 
-All npm scripts use Node built-ins; there are no npm dependencies. Local app URL: <http://localhost:4173/>.
+Uses only built-in Node development/test tools; browser runtime needs no npm dependencies.
 
 ## Hosting
 
-Testlab publishes this directory unchanged beneath its gallery. Its manifest, share target, style/script references and service-worker scope are **relative to this directory**, so it remains self-contained.
+The Testlab workflow publishes this entire folder under:
 
-After the repository rename, open:
+https://teodor-andonov.github.io/261114_testlab/261114_linkbook/
 
-`https://teodor-andonov.github.io/261114_testlab/261114_linkbook/`
-
-Bookmarks are stored locally in IndexedDB on the current browser's origin, not in the public repository. Use Export to back them up. An installed copy from the older `/261114_bookmarker/` location may need reinstallation from the new address.
+The browser still stores bookmarks locally in IndexedDB. The legacy Linkbook service-worker registration is automatically unregistered **only when its exact old scope matches this folder**. This cleanup does not touch the gallery worker or other repositories. The Android share-target integration was removed along with the Linkbook manifest; direct URL entry remains available.
