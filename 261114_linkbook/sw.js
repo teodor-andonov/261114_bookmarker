@@ -1,4 +1,4 @@
-const CACHE_NAME = 'linkbook-shell-v5';
+const CACHE_NAME = 'testlab-linkbook-shell-v1';
 const PRECACHE = ['', 'index.html', 'styles.css', 'app.js', 'db.js', 'metadata.js', 'cover.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
 const scope = self.registration.scope;
 
@@ -10,7 +10,7 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil(Promise.all([
-    caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('linkbook-') && key !== CACHE_NAME).map(key => caches.delete(key)))),
+    caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('testlab-linkbook-') && key !== CACHE_NAME).map(key => caches.delete(key)))),
     self.clients.claim()
   ]));
 });

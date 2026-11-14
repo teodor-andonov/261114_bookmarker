@@ -1,0 +1,70 @@
+const list = document.getElementById('prototypeList');
+const count = document.getElementById('projectCount');
+const search = document.getElementById('filterInput');
+const empty = document.getElementById('emptyNotice');
+const repoLink = document.getElementById('repoLink');
+
+// On GitHub Pages, the first URL segment is the project repository name.
+// This keeps the source link correct across a repository rename.
+if (location.hostname.endsWith('.github.io')) {
+  const name = location.pathname.split('/').filter(Boolean)[0];
+  if (name) repoLink.href = `https://github.com/teodor-andonov/${encodeURIComponent(name)}`;
+}
+
+let projects = [];
+const dateLabel = input => {
+  const match = /^(\d{2})(\d{2})(\d{2})$/.exec(String(input));
+  if (!match) return String(input);
+  return `${match[3]}.${match[2]}.20${match[1]}`;
+};
+function projectCard(project) {
+  const card = document.createElement('a');
+  card.className = 'project-card';
+  card.href = `./${encodeURIComponent(project.folder)}/`;
+  const header = document.createElement('div');
+  header.className = 'card-head';
+  const number = document.createElement('span');
+  number.className = 'card-number';
+  number.textContent = dateLabel(project.date);
+  const status = document.createElement('span');
+  status.className = 'status';
+  const dot = document.createElement('span');
+  dot.className = 'status-dot';
+  status.append(dot, document.createTextNode((project.status || 'Prototype').toUpperCase()));
+  header.append(number, status);
+  const symbol = document.createElement('div');
+  symbol.className = 'card-symbol'; symbol.setAttribute('aria-hidden', 'true');
+  symbol.textContent = project.monogram || (project.title || '?').slice(0, 2).toUpperCase();
+  const bottom = document.createElement('div');
+  bottom.className = 'card-bottom';
+  const category = document.createElement('div');
+  category.className = 'card-category';
+  category.textContent = [project.category, ...(project.tags || []).slice(0, 1)].filter(Boolean).join(' · ');
+  const titleRow = document.createElement('div');
+  titleRow.className = 'card-title-row';
+  const title = document.createElement('h3'); title.textContent = project.title;
+  const arrow = document.createElement('span'); arrow.className = 'visit-arrow'; arrow.textContent = '↗'; arrow.setAttribute('aria-hidden','true');
+  titleRow.append(title, arrow);
+  const summary = document.createElement('p'); summary.textContent = project.description || '';
+  bottom.append(category, titleRow, summary);
+  card.append(header, symbol, bottom);
+  return card;
+}
+function render() {
+  const needle = search.value.trim().toLocaleLowerCase();
+  const displayed = projects.filter(project => [project.title, project.description, project.folder, project.category, project.status, ...(project.tags || [])].some(value => String(value || '').toLocaleLowerCase().includes(needle)));
+  list.replaceChildren(...displayed.map(projectCard));
+  count.textContent = String(projects.length).padStart(2, '0');
+  empty.hidden = displayed.length !== 0;
+}
+search.addEventListener('input', render);
+fetch('./catalog.json', { cache: 'no-cache' })
+  .then(response => { if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
+  .then(data => { projects = Array.isArray(data.projects) ? data.projects : []; render(); })
+  .catch(() => {
+    // Keep the static first-prototype link usable if the generated catalog is unavailable.
+    count.textContent = '01';
+    empty.hidden = true;
+    search.disabled = true;
+    search.placeholder = 'Search unavailable in source preview';
+  });

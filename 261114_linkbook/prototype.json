@@ -1,0 +1,8 @@
+{
+  "title": "Linkbook",
+  "description": "A local-first bookmark PWA with website previews, custom covers and Android sharing.",
+  "category": "PWA",
+  "status": "Active",
+  "monogram": "LB",
+  "tags": ["Bookmarks", "Local-first", "Android"]
+}

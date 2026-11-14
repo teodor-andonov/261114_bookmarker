@@ -1,0 +1,7 @@
+LINKBOOK — SELF-CONTAINED PROTOTYPE
+
+This project is published by the root Testlab GitHub Actions workflow.
+Target URL: https://teodor-andonov.github.io/261114_testlab/261114_linkbook/
+No independent Pages configuration or runtime backend is needed.
+
+Source: see README.md in this folder. Bookmarks remain local to the user's browser origin.

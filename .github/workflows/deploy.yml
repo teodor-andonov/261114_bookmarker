@@ -1,15 +1,19 @@
-name: Deploy Linkbook to GitHub Pages
+name: Deploy Testlab to GitHub Pages
+
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
 permissions:
   contents: read
   pages: write
   id-token: write
+
 concurrency:
-  group: pages
+  group: github-pages
   cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -18,11 +22,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Stage static app
-        run: |
-          mkdir -p dist
-          cp index.html styles.css app.js db.js metadata.js cover.js manifest.webmanifest sw.js dist/
-          cp -R icons dist/
+      - name: Assemble landing page and self-contained prototypes
+        run: python3 .github/scripts/build_site.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
