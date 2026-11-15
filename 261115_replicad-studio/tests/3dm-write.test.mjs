@@ -44,7 +44,9 @@ test("OCCT planar face -> native Rhino NURBS Brep -> 3dm -> reimport", { timeout
   const read = rhino.File3dm.fromByteArray(bytes);
   assert.ok(read, "must re-open as 3dm");
   assert.equal(read.objects.count, 1);
-  const geometry = read.objects.get(0).geometry;
+  const importedObjects = [...read.objects];
+  assert.equal(importedObjects.length, 1);
+  const geometry = importedObjects[0].geometry;
   assert.ok(geometry instanceof rhino.Brep);
   assert.equal(geometry.faces.count, 1);
   assert.equal(geometry.isValidTopology()[0], true);
