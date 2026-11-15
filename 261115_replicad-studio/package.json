@@ -6,9 +6,10 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test tests/*.test.mjs",
+    "test": "node --test tests/source.test.mjs tests/3dm-write.test.mjs tests/3dm-closed.test.mjs tests/3dm-browser-module.test.mjs tests/3dm-general-geometry.test.mjs tests/3dm-complex.test.mjs",
     "test:cad": "node --test tests/cad-geometry.test.mjs",
-    "probe:3dm": "node tests/3dm-beta-probe.mjs && node tests/3dm-surface-probe.mjs && node tests/3dm-types-probe.mjs"
+    "probe:3dm": "node tests/3dm-beta-probe.mjs && node tests/3dm-surface-probe.mjs && node tests/3dm-types-probe.mjs",
+    "test:probe": "node --test tests/3dm-general.test.mjs tests/3dm-curve-probe.test.mjs tests/3dm-geometry-types.test.mjs tests/3dm-spline-structure.test.mjs tests/3dm-mutation-probe.test.mjs"
   },
   "dependencies": {
     "replicad": "1.2.1",
@@ -28,5 +29,5 @@
   "devDependencies": {
     "vite": "8.2.1"
   },
-  "version": "0.3.0-alpha.1"
+  "version": "0.4.0-alpha.1"
 }
