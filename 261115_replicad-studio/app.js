@@ -48,7 +48,6 @@ const code = {
       editor.dispatch({
         changes: { from: 0, to: editor.state.doc.length, insert: source },
         selection: { anchor: 0 },
-        scrollIntoView: true,
       });
     } finally {
       programmaticEditorUpdate = false;
@@ -185,7 +184,8 @@ function rowFor(name, value) {
         // comments, undo history, and editor selection untouched.
         editor.dispatch({
           changes: { from: edit.from, to: edit.to, insert: edit.insert },
-          effects: EditorView.scrollIntoView(edit.from, { y: "center" }),
+          // Do not force CodeMirror or the page to scroll to this field.
+          // Controls may be below the editor on small screens.
         });
       } finally {
         programmaticEditorUpdate = false;
