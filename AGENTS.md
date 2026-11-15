@@ -4,7 +4,7 @@
 Independent experiments published as static applications through GitHub Pages. Each prototype belongs in its own `YYMMDD_slug/` folder and is discovered from `prototype.json`.
 
 ## Runtime boundaries
-- Browser-only client applications. Do not introduce application servers, remote storage, authentication services, server APIs, or backend compute.
+- Browser-only client applications. Do not introduce application-owned servers, remote storage, authentication services or backend compute. An explicitly requested public third-party metadata API is allowed as an optional URL-enrichment feature; do not send the private bookmark database or notes.
 - Build tools such as Vite, npm and GitHub Actions are allowed at development/deployment time; there must be no server process required at runtime.
 - A prototype may use JavaScript, WebAssembly, browser Web Workers, Three.js and other browser-compatible libraries.
 - Treat prototypes as independent. Do not impose shared frameworks or storage schemes on them.
@@ -19,6 +19,7 @@ Independent experiments published as static applications through GitHub Pages. E
 - Before work, check for uncommitted work and commit it first when present. GitHub-API-only changes start from a committed branch, so there is no local worktree to reconcile.
 - Commit the completed changes after work. One commit is normally enough; use multiple logical commits for larger work or when connector operations require it.
 - Keep existing experiments and gallery functionality intact.
+- Work on a development branch, squash-merge after verification, and delete merged development branches.
 - Verify syntax, builds and published deployment when possible; report anything that could not be tested.
 
 ## Prototype versions and release reporting
