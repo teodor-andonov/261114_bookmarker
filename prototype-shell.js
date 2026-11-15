@@ -17,6 +17,9 @@
     '</svg></a>'
   ].join('');
   document.body.append(tray);
+  // Resolve home from the shared script URL, not the current prototype route.
+  const home = tray.querySelector('.testlab-home-button');
+  if (document.currentScript?.src) home.href = new URL('./', document.currentScript.src).href;
   const toggle = tray.querySelector('.testlab-theme-button');
   const moonIcon = toggle.innerHTML;
   const sunIcon = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
