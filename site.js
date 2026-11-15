@@ -40,6 +40,15 @@ const dateLabel = input => {
   if (!match) return String(input);
   return `${match[3]}.${match[2]}.20${match[1]}`;
 };
+const timestampLabel = value => {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat(undefined, {
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  }).format(date);
+};
 function projectCard(project) {
   const card = document.createElement('a');
   card.className = 'project-card';
@@ -69,7 +78,21 @@ function projectCard(project) {
   const arrow = document.createElement('span'); arrow.className = 'visit-arrow'; arrow.textContent = '↗'; arrow.setAttribute('aria-hidden','true');
   titleRow.append(title, arrow);
   const summary = document.createElement('p'); summary.textContent = project.description || '';
-  bottom.append(category, titleRow, summary);
+  const facts = document.createElement('dl');
+  facts.className = 'card-facts';
+  for (const [label, value] of [
+    ['Created', timestampLabel(project.createdAt)],
+    ['Updated', timestampLabel(project.updatedAt)],
+    ['Version', project.version ? 'v' + project.version : '—']
+  ]) {
+    const item = document.createElement('div');
+    const term = document.createElement('dt'); term.textContent = label;
+    const detail = document.createElement('dd'); detail.textContent = value;
+    if (label !== 'Version') detail.title = project[label === 'Created' ? 'createdAt' : 'updatedAt'] || 'Not available';
+    item.append(term, detail);
+    facts.append(item);
+  }
+  bottom.append(category, titleRow, summary, facts);
   card.append(header, symbol, bottom);
   return card;
 }
