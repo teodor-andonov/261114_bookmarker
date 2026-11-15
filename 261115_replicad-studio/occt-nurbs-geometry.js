@@ -120,15 +120,15 @@ export function makeNurbsFace(face,rhino,oc) {
     const expected=evaluate(uv);
     let u=Math.max(du.T0,Math.min(du.T1,uv[0]));
     let v=Math.max(dv.T0,Math.min(dv.T1,uv[1]));
-    const evaluate=(x,y)=>{const p=surface.pointAt(x,y);return [p.X,p.Y,p.Z];};
+    const evaluateRhino=(x,y)=>{const p=surface.pointAt(x,y);return [p.X,p.Y,p.Z];};
     const hu=(du.T1-du.T0)*1e-6,hv=(dv.T1-dv.T0)*1e-6;
     for(let iteration=0;iteration<15;iteration++){
-      const p=evaluate(u,v),err=expected.map((x,i)=>x-p[i]);
+      const p=evaluateRhino(u,v),err=expected.map((x,i)=>x-p[i]);
       if(Math.hypot(...err)<2e-8)return [u,v];
-      const pu=evaluate(Math.min(u+hu,du.T1),v);
-      const mu=evaluate(Math.max(u-hu,du.T0),v);
-      const pv=evaluate(u,Math.min(v+hv,dv.T1));
-      const mv=evaluate(u,Math.max(v-hv,dv.T0));
+      const pu=evaluateRhino(Math.min(u+hu,du.T1),v);
+      const mu=evaluateRhino(Math.max(u-hu,du.T0),v);
+      const pv=evaluateRhino(u,Math.min(v+hv,dv.T1));
+      const mv=evaluateRhino(u,Math.max(v-hv,dv.T0));
       const au=pu.map((x,i)=>(x-mu[i])/(Math.min(u+hu,du.T1)-Math.max(u-hu,du.T0)));
       const av=pv.map((x,i)=>(x-mv[i])/(Math.min(v+hv,dv.T1)-Math.max(v-hv,dv.T0)));
       const dot=(a,b)=>a.reduce((sum,x,i)=>sum+x*b[i],0);
@@ -139,7 +139,7 @@ export function makeNurbsFace(face,rhino,oc) {
       u=Math.max(du.T0,Math.min(du.T1,u+stepU));
       v=Math.max(dv.T0,Math.min(dv.T1,v+stepV));
     }
-    const p=evaluate(u,v);
+    const p=evaluateRhino(u,v);
     if(distance(expected,p)>2e-5)
       throw new Error("Could not map OpenCascade "+type+" UV "+JSON.stringify(uv)+
         " to Rhino UV "+JSON.stringify([u,v])+" within tolerance, distance="+distance(expected,p)+
@@ -153,9 +153,14 @@ export function makeNurbsEdge(edge,rhino,oc) {
   const start=take(edge.startPoint),end=take(edge.endPoint);
   if(edge.geomType==="LINE")return {curve:new rhino.LineCurve(point3(start),point3(end)),a:start,b:end};
   const info=oc.BRep_Tool.Curve(edge.wrapped);
-  if(!info?.returnValue||!finite([info.First,info.Last]))throw new Error(
-    "OCCT edge lacks 3D curve ("+edge.geomType+") endpoints "+JSON.stringify([start,end])+
-    " param limits "+JSON.stringify([info?.First,info?.Last]));
+  // OCCT's degenerate edges (e.g. at poles of spherical fillets)
+  // have a 2D pcurve but no 3D curve. Rhino represents these as singular
+  // trims attached directly to a vertex, not as zero-length 3D edges.
+  if(!info?.returnValue){
+    if(distance(start,end)<1e-7)return {curve:null,a:start,b:end,singular:true};
+    throw new Error("Nondegenerate OpenCascade edge lacks 3D curve");
+  }
+  if(!finite([info.First,info.Last]))throw new Error("Invalid OpenCascade edge range");
   const trimmed=new oc.Geom_TrimmedCurve(info.returnValue,info.First,info.Last);
   const bs=oc.GeomConvert.CurveToBSplineCurve(trimmed);
   if(bs.IsPeriodic())bs.SetNotPeriodic();
