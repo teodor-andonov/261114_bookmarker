@@ -217,7 +217,7 @@ export function exactUvPolyline(rhino,points) {
   return cv;
 }
 
-export function sampleTrim(adaptor,faceData,face,rhino,{tolerance=5e-5,maxDepth=9,offset=[0,0]}={}) {
+export function sampleTrim(adaptor,faceData,face,rhino,{tolerance=1e-4,maxDepth=12,offset=[0,0]}={}) {
   const first=adaptor.FirstParameter(),last=adaptor.LastParameter();
   if(!finite([first,last])||last<=first)throw Error("Invalid 2D trim domain");
   const mapped=t=>{
