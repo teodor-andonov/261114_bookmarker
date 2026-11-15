@@ -30,7 +30,7 @@ test("probe converting actual torus/sphere surface and circular edge to rhino ra
    for(let u=0;u<nu;u++)for(let v=0;v<nv;v++){
       const p=bs.Pole(u+1,v+1);
       const w=bs.Weight(u+1,v+1);
-      if(!surf.points.setPoint(u,v,{X:p.X(),Y:p.Y(),Z:p.Z()}))throw Error("setPoint failed");
+      if(!surf.points.setPoint(u,v,{X:p.X()*w,Y:p.Y()*w,Z:p.Z()*w}))throw Error("setPoint failed");
       if(!surf.points.setWeight(u,v,w))throw Error("setWeight failed");
    }
    const expand=(values)=>values.flatMap(([value,m])=>Array.from({length:m},()=>value)).slice(1,-1);
@@ -70,7 +70,7 @@ test("probe converting actual torus/sphere surface and circular edge to rhino ra
  const cv=new rh.NurbsCurve(3,true,bs.Degree()+1,bs.NbPoles());
  for(let i=0;i<bs.NbPoles();i++){
   const p=bs.Pole(i+1);
-  cv.points.setPoint(i,{X:p.X(),Y:p.Y(),Z:p.Z()});
+  cv.points.setPoint(i,{X:p.X()*bs.Weight(i+1),Y:p.Y()*bs.Weight(i+1),Z:p.Z()*bs.Weight(i+1)});
   cv.points.setWeight(i,bs.Weight(i+1));
  }
  console.log("RHINO curve knot count",cv.knots.count,bs.NbPoles()+bs.Degree()-1);
