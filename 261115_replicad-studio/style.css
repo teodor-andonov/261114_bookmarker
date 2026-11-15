@@ -22,4 +22,7 @@
 .demo-card-detail{font-size:11px;color:#a8b7c0;line-height:1.5}
 .demo-card-tag{font:10px ui-monospace,monospace;color:#b2c3ce;white-space:nowrap;padding:5px 7px;border:1px solid #596773;border-radius:4px}
 @media(max-width:480px){.demo-dialog-head{padding:17px 15px}.demo-list{padding:10px}.demo-card{padding:12px}.demo-card-tag{display:none}}
-\n/* Avoid mobile document scroll anchoring when asynchronous geometry and\n   CodeMirror updates replace dynamic content inside a workspace panel. */\n#code,.canvas-wrap,.param-list{overflow-anchor:none}\n
+
+/* Avoid mobile document scroll anchoring when asynchronous geometry and
+   CodeMirror updates replace dynamic content inside a workspace panel. */
+#code,.canvas-wrap,.param-list{overflow-anchor:none}
