@@ -56,7 +56,22 @@ test("Boolean example cuts and fillets two intersecting bodies, then fuses them"
   const operations = [];
   class Shape {
     constructor(kind) { this.kind = kind; }
-    fillet(radius) { assert.ok(radius > 0); operations.push("fillet"); return this; }
+    fillet(radius, selector) {
+      assert.ok(radius > 0);
+      if (selector) { assert.equal(typeof selector, "function"); operations.push("jointFillet"); }
+      else operations.push("fillet");
+      return this;
+    }
+    findEdges(selector) {
+      const points = [];
+      const finder = {
+        inDirection(axis) { assert.equal(axis, "X"); return this; },
+        either(filters) { filters.forEach(fn => fn({ near(point) { points.push(point); return this; } })); return this; },
+      };
+      selector(finder);
+      assert.equal(points.length, 2);
+      return [{ delete() {} }, { delete() {} }];
+    }
     cut(other) { assert.ok(other instanceof Shape); operations.push("cut"); return this; }
     fuse(other) { assert.ok(other instanceof Shape); operations.push("fuse"); return this; }
     translate() { operations.push("translate"); return this; }
@@ -76,12 +91,18 @@ test("Boolean example cuts and fillets two intersecting bodies, then fuses them"
     "\nreturn { main, defaultParams };")(replicad);
   assert.equal(defaultParams.unionParts, true);
   assert.equal(defaultParams.overlap > 0, true);
+  assert.equal(defaultParams.jointFillet > 0, true);
 
   const fused = main(replicad, defaultParams);
   assert.ok(fused instanceof Shape, "default example should return one unioned solid");
   assert.ok(operations.includes("cut"));
   assert.ok(operations.includes("fuse"));
   assert.equal(operations.filter(operation => operation === "fillet").length, 2);
+  assert.equal(operations.filter(operation => operation === "jointFillet").length, 1);
+
+  const withoutJoint = main(replicad, { ...defaultParams, jointFillet: 0 });
+  assert.ok(withoutJoint instanceof Shape);
+  assert.equal(operations.filter(operation => operation === "jointFillet").length, 1);
 
   const beforeUnion = main(replicad, { ...defaultParams, unionParts: false });
   assert.ok(Array.isArray(beforeUnion));
