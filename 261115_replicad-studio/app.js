@@ -125,7 +125,7 @@ worker.addEventListener("message", event => {
   } else if (data.type === "exported") {
     const type = data.format;
     const mime = type === "step" ? "model/step" : "model/stl";
-    saveBlob(new Blob([data.bytes], { type: mime }), filenameFor(type === "step" ? "step" : "stl"), mime)
+    saveBlob(new Blob([data.bytes], { type: mime }), filenameFor(type === "step" ? "step" : "stl"), mime, false)
       .then(() => status(type.toUpperCase() + " export ready", "ok"))
       .catch(error => status("Export save failed: " + error.message, "error"));
   }
@@ -216,8 +216,10 @@ function sourceWithParams() {
   const formatted = "const defaultParams = " + JSON.stringify(params, null, 2) + ";";
   return code.value.replace(re, formatted);
 }
-async function saveBlob(blob, name, mime = "application/octet-stream") {
-  if ("showSaveFilePicker" in window) {
+async function saveBlob(blob, name, mime = "application/octet-stream", usePicker = true) {
+  // Exports complete asynchronously in a worker; their file picker would lose
+  // its required user activation, so export through a normal browser download.
+  if (usePicker && "showSaveFilePicker" in window) {
     const ext = "." + name.split(".").pop();
     const handle = await window.showSaveFilePicker({
       suggestedName: name,
