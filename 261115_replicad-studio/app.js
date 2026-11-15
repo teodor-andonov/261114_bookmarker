@@ -409,8 +409,8 @@ $("threeDmButton").addEventListener("click", () => {
   send("export", { format: "3dm" });
 });
 function onSourceEdited() {
-  setDirty(true);
-  lastBuildRequest = -1;
+  clearTimeout(queuedBuild);
+  lastBuildRequest = -1; // a manual edit supersedes pending parameter builds
   setDirty(true);
   built = false;
   exportsEnabled(false);
