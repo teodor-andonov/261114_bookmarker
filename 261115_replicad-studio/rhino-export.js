@@ -2,7 +2,7 @@
 // Only export when we can prove that the original OpenCascade shape is one
 // of the supported exact primitive types. No triangulation, fitting, or
 // bounding-box approximations are ever used.
-import initRhino from "rhino3dm";
+import initRhino from "rhino3dm/rhino3dm.module.js";
 import rhinoWasmURL from "rhino3dm/rhino3dm.wasm?url";
 
 let rhinoPromise;
