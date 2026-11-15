@@ -70,7 +70,7 @@ test("Boolean example builds two separate shapes through expected CAD operations
   };
   const demo = DEMOS.find(entry => entry.id === "booleans");
   const { main, defaultParams } = new Function("replicad", demo.source +
-    "\\nreturn { main, defaultParams };")(mockReplicad);
+    "\nreturn { main, defaultParams };")(mockReplicad);
   const output = main(mockReplicad, defaultParams);
   assert.equal(output.length, 2);
   assert.deepEqual(output.map(item => item.name), ["Drilled plate", "Rounded block"]);
