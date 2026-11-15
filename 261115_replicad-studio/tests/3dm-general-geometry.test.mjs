@@ -18,7 +18,7 @@ test("all 63 complex demo faces become accurate rational Rhino NURBS surfaces", 
    const data=makeNurbsFace(face,rh,oc);
    const b=face.UVBounds,u=(b.uMin+b.uMax)/2,v=(b.vMin+b.vMax)/2;
    const [U,V]=data.map([u,v]);
-   const origin=face.pointOnSurface(u,v),mapped=data.surface.pointAt(U,V);
+   const origin=face.pointOnSurface((u-b.uMin)/(b.uMax-b.uMin),(v-b.vMin)/(b.vMax-b.vMin)),mapped=data.surface.pointAt(U,V);
    const error=Math.hypot(origin.x-mapped.X,origin.y-mapped.Y,origin.z-mapped.Z);
    origin.delete();
    assert.ok(error<3e-5,face.geomType+" surface mapping error "+error);
