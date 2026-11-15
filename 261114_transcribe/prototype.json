@@ -1,8 +1,13 @@
 {
-  "title": "Audio → Text",
-  "description": "Transcribe recordings locally in your browser with Whisper, then copy or export the text and timestamps.",
+  "title": "Audio \u2192 Text",
+  "description": "English speech-to-text in your browser with Whisper Base or Small, editable transcripts and timestamps.",
   "category": "Speech recognition",
   "status": "Prototype",
   "monogram": "AT",
-  "tags": ["Audio", "Whisper", "On-device"]
+  "tags": [
+    "Audio",
+    "Whisper",
+    "English",
+    "On-device"
+  ]
 }

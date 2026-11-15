@@ -5,7 +5,7 @@ const els = {
   fileInput: $('fileInput'), drop: $('dropZone'), fileDetails: $('fileDetails'), fileName: $('fileName'),
   fileMeta: $('fileMeta'), remove: $('removeFile'), player: $('audioPlayer'),
   record: $('recordButton'), recordLabel: $('recordLabel'), recordTime: $('recordTime'),
-  model: $('modelSelect'), language: $('languageSelect'), device: $('deviceSelect'),
+  model: $('modelSelect'), modelHint: $('modelHint'), device: $('deviceSelect'),
   start: $('transcribeButton'), startLabel: $('transcribeLabel'), cancel: $('cancelButton'),
   status: $('statusText'), percent: $('statusPercent'), fill: $('progressFill'),
   transcript: $('transcript'), resultState: $('resultState'), segments: $('segments'), segmentCount: $('segmentCount'),
@@ -41,7 +41,6 @@ function setBusy(value) {
   els.remove.disabled = value;
   els.record.disabled = value;
   els.model.disabled = value;
-  els.language.disabled = value || els.model.value === 'english';
   els.device.disabled = value;
   els.startLabel.textContent = value ? 'Transcribing…' : 'Transcribe audio';
 }
@@ -97,10 +96,13 @@ for (const event of ['dragenter','dragover']) els.drop.addEventListener(event, e
 for (const event of ['dragleave','drop']) els.drop.addEventListener(event, e => {e.preventDefault(); els.drop.classList.remove('dragging');});
 els.drop.addEventListener('drop', e => { if (!busy) selectAudio([...e.dataTransfer.files].find(Boolean)); });
 els.remove.addEventListener('click', removeAudio);
-els.model.addEventListener('change', () => {
-  if (els.model.value === 'english') els.language.value = 'english';
-  els.language.disabled = els.model.value === 'english';
-});
+function updateModelHint() {
+  els.modelHint.textContent = els.model.value === 'small'
+    ? 'Small English: higher accuracy but a larger download and much slower processing. Best on desktop.'
+    : 'Base English: better accuracy than Tiny, with a reasonable download and memory footprint.';
+}
+els.model.addEventListener('change', updateModelHint);
+updateModelHint();
 
 function stopMediaTracks() {
   mediaStream?.getTracks().forEach(track => track.stop());
@@ -193,7 +195,7 @@ function onWorkerMessage(event) {
   if (d.type === 'download') {
     status(`Downloading speech model${d.file ? ` · ${d.file.split('/').at(-1)}` : ''}`,Math.min(65,Math.max(8,Math.round((d.percent || 0) * .6))));
   } else if (d.type === 'status') {
-    const estimate = /recognis/i.test(d.message) ? 72 : 18;
+    const estimate = /recognis|transcrib/i.test(d.message) ? 72 : 18;
     status(d.message,estimate);
   } else if (d.type === 'notice') {
     status(d.message,35);
@@ -225,7 +227,7 @@ els.start.addEventListener('click',async()=>{
     els.fileMeta.textContent=`${formatBytes(file.size)} · ${formatClock(duration)} · ${file.type || 'audio'}`;
     status('Loading speech engine…',10);
     const data=audio.buffer;
-    getWorker().postMessage({type:'transcribe',jobId:current,audio:data,modelKey:els.model.value,language:els.language.value,device:els.device.value},[data]);
+    getWorker().postMessage({type:'transcribe',jobId:current,audio:data,modelKey:els.model.value,device:els.device.value},[data]);
   }catch(error){if(current===job){setBusy(false);status(error.message || String(error),0,true);}}
 });
 els.cancel.addEventListener('click',()=>{if(!busy)return;++job;if(worker){worker.terminate();worker=null;}setBusy(false);status('Cancelled. Audio remains available.',0);});
