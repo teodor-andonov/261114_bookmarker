@@ -68,6 +68,7 @@ let fileHandle = null;
 let fileName = "untitled.js";
 let dirty = false;
 let params = {};
+let lastRenderedParams = null;
 let built = false;
 let lastBuildRequest = 0;
 let requestIndex = 0;
@@ -98,6 +99,7 @@ function exportsEnabled(enabled) {
   $("threeDmButton").disabled = !enabled;
 }
 function setSource(source, name, handle = null) {
+  lastRenderedParams = null;
   code.value = source;
   fileHandle = handle;
   setName(name);
@@ -191,6 +193,7 @@ function rowFor(name, value) {
         programmaticEditorUpdate = false;
       }
       params[name] = next;
+      if (lastRenderedParams) lastRenderedParams[name] = next;
       setDirty(true);
       built = false;
       lastBuildRequest = -1; // discard results from prior source revisions
@@ -260,7 +263,16 @@ function rowFor(name, value) {
 }
 function renderParameters() {
   const list = Object.entries(params);
+  const identicalControls = lastRenderedParams &&
+    Object.keys(lastRenderedParams).length === list.length &&
+    list.every(([name, value]) => Object.is(lastRenderedParams[name], value)) &&
+    !paramsRoot.querySelector("input:disabled");
   paramsNote.textContent = list.length + " exposed";
+  // Keep the existing focused controls and their layout when Run doesn't
+  // actually change their values or schema. Rebuilding the DOM here can make
+  // mobile browsers jump back to a new focus/scroll anchor.
+  if (identicalControls) return;
+  lastRenderedParams = { ...params };
   paramsRoot.replaceChildren();
   if (!list.length) {
     const note = document.createElement("p");
