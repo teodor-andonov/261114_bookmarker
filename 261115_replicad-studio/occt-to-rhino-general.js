@@ -56,7 +56,9 @@ function orderedWireInUV(edges,face,oc) {
     if(order)return order;
   }
   pending.forEach(e=>e.adaptor.delete?.());
-  throw new Error("OpenCascade face wire has disconnected UV trim curves");
+  throw new Error("OpenCascade "+face.geomType+" face wire has disconnected UV trim curves: "+JSON.stringify(
+    pending.map(p=>({type:p.edge.geomType,hash:p.edge.hashCode,
+      a:p.a,b:p.b,edgeStart:p.edge.startPoint.toTuple(),edgeEnd:p.edge.endPoint.toTuple()}))));
 }
 
 function buildTrim(item,face,faceData,rhino) {
