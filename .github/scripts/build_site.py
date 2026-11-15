@@ -36,7 +36,10 @@ def main():
             "tags": [str(tag)[:45] for tag in info.get("tags", []) if isinstance(tag, str)][:8],
         }
         projects.append(project)
-        shutil.copytree(folder, OUTPUT / folder.name, ignore=shutil.ignore_patterns("node_modules", ".git", ".DS_Store", "tests", "__pycache__"))
+        # Bundled prototypes publish only their compiled static assets.
+        # Simple HTML prototypes keep their original source-only workflow.
+        publish_from = folder / "build" if (folder / "build" / "index.html").is_file() else folder
+        shutil.copytree(publish_from, OUTPUT / folder.name, ignore=shutil.ignore_patterns("node_modules", ".git", ".DS_Store", "tests", "__pycache__"))
     (OUTPUT / "catalog.json").write_text(json.dumps({"projects": projects}, indent=2) + "\n", encoding="utf-8")
     print("Built Testlab:", len(projects), "prototype(s)")
     for project in projects:
