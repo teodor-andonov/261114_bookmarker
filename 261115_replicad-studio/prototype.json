@@ -1,0 +1,13 @@
+{
+  "title": "Replicad Studio",
+  "description": "File-first parametric modelling studio: JavaScript editor, live parameters, 3D viewer and precise STEP exports.",
+  "category": "CAD / Code",
+  "status": "Prototype",
+  "monogram": "RC",
+  "tags": [
+    "Replicad",
+    "Parametric",
+    "Offline",
+    "File-first"
+  ]
+}
