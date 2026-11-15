@@ -10,7 +10,7 @@ test("probe exact OCCT analytic -> NURBS primitives and rhino constructors", {ti
  const shape=main(replicad,defaultParams);
  const types=new Map();const pcTypes={};const cTypes={};
  for(const face of shape.faces){
-   if(!types.has(face.geomType))types.set(face.geomType,face);else face.delete();
+   if(!types.has(face.geomType))types.set(face.geomType,face);
    for(const wire of face.wires){
       for(const edge of wire.edges){
        try{const adaptor=new oc.BRepAdaptor_Curve2d(edge.wrapped,face.wrapped);
