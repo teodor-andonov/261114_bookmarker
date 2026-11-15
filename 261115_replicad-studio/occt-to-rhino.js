@@ -113,9 +113,13 @@ export function convertExactPlanarBrep(shape, rhino) {
           // First wire should be the outer loop on simple solids; search for
           // the actual OpenCascade outer wire rather than infer when present.
           const wire = wires[wireIndex];
-          const loop = wireIndex === 0
-            ? brep.loops.addOuterLoop(faceIndex)
-            : brep.loops.add(rhino.BrepLoopType.Inner, newFace);
+          // addOuterLoop() creates an automatic rectangular boundary,
+          // which would duplicate our exact OCCT trims. Instead attach an
+          // empty loop to the face and populate it with shared-edge trims.
+          const loop = brep.loops.add(
+            wireIndex === 0 ? rhino.BrepLoopType.Outer : rhino.BrepLoopType.Inner,
+            newFace
+          );
           if (!loop) throw new Error("Could not construct a Rhino trimming loop");
           const loopEdges = wire.edges;
           try {
