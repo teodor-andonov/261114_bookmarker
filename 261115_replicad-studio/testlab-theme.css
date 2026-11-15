@@ -1,0 +1,34 @@
+/* CAD viewport stays neutral/dark: theme changes interface, not model lighting. */
+:root[data-theme="light"] {
+  --bg:#f5f7f7; --pane:#fff; --surface:#eaf0f2; --border:#d1d9dd;
+  --muted:#5e6b72; --accent:#3269a5; --strong:#25333e;
+  color:#25333e; background:var(--bg);
+}
+:root[data-theme="light"] .topbar {background:#f8fafa}
+:root[data-theme="light"] .info-bar {background:#edf2f3}
+:root[data-theme="light"] button:not(.testlab-floating-button) {color:var(--strong)}
+:root[data-theme="light"] button:not(:disabled):hover:not(.testlab-floating-button) {background:#e5ebef}
+:root[data-theme="light"] button.primary {background:#336ba6;color:#fff;border-color:#336ba6}
+:root[data-theme="light"] button.primary:hover:not(:disabled) {background:#275886}
+:root[data-theme="light"] .slash {color:#a0aeb5}
+:root[data-theme="light"] .status,
+:root[data-theme="light"] .section-title,
+:root[data-theme="light"] .panel-foot,
+:root[data-theme="light"] .panel-caption {color:#52656e}
+:root[data-theme="light"] .param-row input[type=number],
+:root[data-theme="light"] .param-row input[type=text] {background:#fff;color:#27353d}
+:root[data-theme="light"] .params-title,
+:root[data-theme="light"] .export-note {border-color:var(--border);color:#61727c}
+:root[data-theme="light"] #code {background:#fff}
+:root[data-theme="light"] #code .cm-editor {background:#fff;color:#24303a}
+:root[data-theme="light"] #code .cm-gutters {background:#f2f5f6!important;color:#61717a;border-color:#d1d9dd!important}
+:root[data-theme="light"] #code .cm-activeLine {background:#dce8ef70}
+:root[data-theme="light"] #code .cm-selectionBackground {background:#8db8df77}
+:root[data-theme="light"] .demo-dialog {background:#fff;color:#24323b;border-color:#ccd5db;box-shadow:0 24px 70px #07121d50}
+:root[data-theme="light"] .demo-dialog::backdrop {background:#17222b80}
+:root[data-theme="light"] .demo-card {background:#f4f7f9;border-color:#d2dce1}
+:root[data-theme="light"] .demo-card:hover {background:#eaf2f6}
+:root[data-theme="light"] .demo-card-name {color:#1f333e}
+:root[data-theme="light"] .demo-card-detail,
+:root[data-theme="light"] .demo-card-tag {color:#546d79}
+:root[data-theme="light"] .demo-card-tag {border-color:#bccbd3}
