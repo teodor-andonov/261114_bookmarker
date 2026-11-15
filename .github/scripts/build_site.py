@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a static GitHub Pages site, automatically listing dated prototype folders."""
+"""Assemble the Testlab gallery and inject the shared prototype shell."""
 import json
 import os
 import re
@@ -11,27 +11,74 @@ ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / "dist"
 PATTERN = re.compile(r"^(\d{6})_([a-z0-9][a-z0-9-]*)$")
 
+
+def git_dates(folder):
+    """Earliest/latest committed change to this prototype, in ISO-8601."""
+    result = subprocess.run(
+        ["git", "log", "--format=%cI", "--", folder],
+        cwd=ROOT, capture_output=True, text=True, check=False
+    )
+    times = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    return (times[-1], times[0]) if times else (None, None)
+
+
+def version_of(folder, metadata):
+    package_file = folder / "package.json"
+    if package_file.is_file():
+        try:
+            value = json.loads(package_file.read_text(encoding="utf-8")).get("version")
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        except (OSError, ValueError):
+            pass
+    value = metadata.get("version")
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def inject_shell(index_file, folder_name, has_theme):
+    """No prototype needs to copy a home button, theme toggle or release badge."""
+    markup = index_file.read_text(encoding="utf-8")
+    if "</head>" not in markup or "</body>" not in markup:
+        raise ValueError(f"Prototype {folder_name} must have closing head and body tags")
+    boot = """<script>
+(() => {
+  let preference = null;
+  try { preference = localStorage.getItem('testlab-theme'); } catch {}
+  const systemDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+  document.documentElement.dataset.theme =
+    preference === 'light' || preference === 'dark'
+      ? preference : (systemDark ? 'dark' : 'light');
+})();
+</script>"""
+    def relative(path):
+        return os.path.relpath(path, index_file.parent).replace(os.sep, "/")
+    css = f'<link rel="stylesheet" href="{relative(OUTPUT / "prototype-shell.css")}">'
+    if has_theme:
+        css += f'<link rel="stylesheet" href="{relative(OUTPUT / folder_name / "testlab-theme.css")}">'
+    markup = markup.replace("</head>", boot + "\n" + css + "\n</head>", 1)
+    markup = markup.replace("</body>", f'<script defer src="{relative(OUTPUT / "prototype-shell.js")}"></script>\n</body>', 1)
+    index_file.write_text(markup, encoding="utf-8")
+
+
 def main():
     if OUTPUT.exists():
         shutil.rmtree(OUTPUT)
     OUTPUT.mkdir()
-    for name in ("index.html", "site.css", "site.js", "manifest.webmanifest", "sw.js"):
+    for name in ("index.html", "site.css", "site.js", "manifest.webmanifest", "sw.js",
+                 "prototype-shell.css", "prototype-shell.js"):
         shutil.copy2(ROOT / name, OUTPUT / name)
     shutil.copytree(ROOT / "icons", OUTPUT / "icons")
     (OUTPUT / ".nojekyll").touch()
-    commit_sha = os.environ.get('GITHUB_SHA', '').strip()
-    if not commit_sha:
-        commit_sha = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=ROOT, capture_output=True, text=True, check=False).stdout.strip()
-    short_sha = re.sub(r'[^0-9a-f]', '', commit_sha.lower())[:7] or 'unknown'
     projects = []
     for folder in sorted(ROOT.iterdir(), reverse=True):
         match = PATTERN.fullmatch(folder.name)
         if not folder.is_dir() or not match or not (folder / "index.html").is_file():
             continue
-        info_path = folder / "prototype.json"
-        info = json.loads(info_path.read_text(encoding="utf-8")) if info_path.is_file() else {}
+        info_file = folder / "prototype.json"
+        info = json.loads(info_file.read_text(encoding="utf-8")) if info_file.is_file() else {}
         title = str(info.get("title") or match.group(2).replace("-", " ").title())[:100]
-        project = {
+        created, updated = git_dates(folder.name)
+        projects.append({
             "folder": folder.name,
             "date": match.group(1),
             "title": title,
@@ -40,20 +87,30 @@ def main():
             "status": str(info.get("status") or "Prototype")[:40],
             "monogram": str(info.get("monogram") or title[:2]).upper()[:4],
             "tags": [str(tag)[:45] for tag in info.get("tags", []) if isinstance(tag, str)][:8],
-        }
-        projects.append(project)
-        # Bundled prototypes publish only their compiled static assets.
-        # Simple HTML prototypes keep their original source-only workflow.
-        publish_from = folder / "build" if (folder / "build" / "index.html").is_file() else folder
-        shutil.copytree(publish_from, OUTPUT / folder.name, ignore=shutil.ignore_patterns("node_modules", ".git", ".DS_Store", "tests", "__pycache__"))
-        published_index = OUTPUT / folder.name / 'index.html'
-        html = published_index.read_text(encoding='utf-8')
-        if '__LINKBOOK_BUILD_SHA__' in html:
-            published_index.write_text(html.replace('__LINKBOOK_BUILD_SHA__', short_sha), encoding='utf-8')
-    (OUTPUT / "catalog.json").write_text(json.dumps({"projects": projects}, indent=2) + "\n", encoding="utf-8")
+            "createdAt": created,
+            "updatedAt": updated,
+            "version": version_of(folder, info),
+        })
+        # Built prototypes publish compiled assets; plain prototypes publish source.
+        source = folder / "build" if (folder / "build" / "index.html").is_file() else folder
+        target = OUTPUT / folder.name
+        shutil.copytree(source, target, ignore=shutil.ignore_patterns(
+            "node_modules", ".git", ".DS_Store", "tests", "__pycache__"))
+        app_theme = folder / "testlab-theme.css"
+        if app_theme.is_file():
+            shutil.copy2(app_theme, target / "testlab-theme.css")
+        for page in target.rglob("*.html"):
+            if "assets" not in page.relative_to(target).parts:
+                inject_shell(page, folder.name, app_theme.is_file())
+
+    (OUTPUT / "catalog.json").write_text(
+        json.dumps({"projects": projects}, indent=2) + "\n", encoding="utf-8"
+    )
     print("Built Testlab:", len(projects), "prototype(s)")
     for project in projects:
-        print(" -", project["folder"])
+        print(" -", project["folder"], project["version"],
+              project["createdAt"], project["updatedAt"])
+
 
 if __name__ == "__main__":
     main()

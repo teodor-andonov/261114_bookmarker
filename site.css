@@ -51,3 +51,12 @@
 :root[data-theme="dark"] .sep,
 :root[data-theme="dark"] .footer-divider {color:#677669}
 @media(max-width:700px){.header-right{gap:8px}.theme-switch{width:36px;height:36px}}
+
+/* Computed from each prototype's Git history and package version. */
+.card-facts {display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;margin:18px 0 0;padding:13px 0 0;border-top:1px solid var(--line)}
+.card-facts>div {min-width:0}
+.card-facts dt {font:700 9px/1.4 ui-monospace,Consolas,monospace;letter-spacing:.075em;text-transform:uppercase;color:var(--muted)}
+.card-facts dd {margin:5px 0 0;font:550 11px/1.5 ui-sans-serif,system-ui,sans-serif;color:var(--ink);overflow-wrap:anywhere}
+:root[data-theme="dark"] .card-facts dt {color:#a1afa4}
+:root[data-theme="dark"] .card-facts dd {color:#e2e9e3}
+@media(max-width:420px){.card-facts{gap:7px}.card-facts dd{font-size:10px}}

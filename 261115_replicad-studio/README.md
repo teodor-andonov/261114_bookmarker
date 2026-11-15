@@ -2,7 +2,7 @@
 
 Browser-only parametric CAD editor: vanilla JavaScript, CodeMirror 6, Replicad / OpenCascade WebAssembly, Three.js, and rhino3dm/openNURBS WebAssembly.
 
-**Current release:** `v0.4.0-alpha.1`. The header shows **the version and the exact deployed short Git SHA** (injected by Vite). The repository-wide version and commit-reporting convention is in the root `AGENTS.md`.
+**Current release:** `v0.4.0-alpha.1` in `package.json`. Its version, created time and last update time appear on the Testlab gallery card, not inside Replicad Studio. The gallery build adds the floating Home/theme controls; `testlab-theme.css` supplies the light interface palette and CodeMirror switches highlighting with the theme.
 
 ## Functionality
 
@@ -55,7 +55,7 @@ npm run test:cad
 npm run build
 ```
 
-Build files are published to GitHub Pages through Testlab's workflow. The production build uses the app version from `package.json` and the actual Git SHA from the GitHub build environment.
+Build files are published to GitHub Pages through Testlab's workflow. The gallery derives version from `package.json` and creation/update timestamps from Git history.
 
 ## Limitations and manual checks
 

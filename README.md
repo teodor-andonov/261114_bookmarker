@@ -7,6 +7,7 @@ A gallery of independent, small web prototypes on GitHub Pages. The **Testlab la
 ```text
 index.html / site.css / site.js   # Installable gallery + theme toggle
 manifest.webmanifest / sw.js       # Gallery-only offline shell
+prototype-shell.js / .css           # Shared theme toggle + floating Home control
 icons/                             # Gallery home-screen icon
 .github/scripts/build_site.py     # Automatic prototype discovery
 .github/workflows/deploy.yml      # GitHub Pages publication
@@ -14,13 +15,15 @@ YYMMDD_app-name/                  # Each independent web experiment
   index.html
   ...                              # Whatever this app needs
   prototype.json                   # Optional gallery metadata
+  package.json                     # Version (or use prototype.json)
+  testlab-theme.css                # Per-app light/dark palette
 ```
 
-To add a prototype, create a folder matching `YYMMDD_app-name` with an `index.html`, and use relative file URLs. Optionally provide `prototype.json`. Pushing to `main` builds the catalog and deploys all folders.
+To add a prototype, create a folder matching `YYMMDD_app-name` with an `index.html`, and use relative file URLs. Optionally provide `prototype.json`. Set a SemVer version in `package.json` or `prototype.json`, and create `testlab-theme.css` for the app-specific light/dark colours. The site build inserts the two shared circular controls (theme and Home) into every published HTML page; keep duplicate navigation and version badges out of prototype source. The gallery cards display version, first Git commit time, and last Git update time for each folder. GitHub Actions uses full checkout history to calculate the timestamps. Pushing to `main` builds the catalog and deploys all folders.
 
 ## Install the gallery
 
-Open https://teodor-andonov.github.io/261114_testlab/ in Chrome on Android and choose **Install**. Use the gallery to launch the contained prototypes. The gallery has a light/dark toggle that respects the device theme by default; the user's choice is stored as `testlab-theme`.
+Open https://teodor-andonov.github.io/261114_testlab/ in Chrome on Android and choose **Install**. Use the gallery to launch the contained prototypes. The gallery and every published prototype share the light/dark preference, following the device by default. The choice is stored as `testlab-theme`. The controls are injected at build time, so a prototype's independent `npm run dev` preview omits them; preview the assembled Testlab site to see the final shared UI.
 
 ## Scope and isolation
 

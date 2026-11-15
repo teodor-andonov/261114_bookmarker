@@ -3,8 +3,6 @@ import { normalizeUrl, safeImageUrl, fallbackMetadata, getMetadata, urlFromShare
 import { coverIdentity, coverImage, isLocalCover } from './cover.js';
 
 const $ = id => document.getElementById(id);
-// Direct local preview has no deployment SHA; GitHub Actions replaces the marker.
-if ($('buildSha')?.textContent?.startsWith('__')) $('buildSha').textContent = 'dev';
 const els = {
   addForm: $('addForm'), url: $('urlInput'), addButton: $('addButton'), message: $('message'),
   count: $('totalCount'), search: $('searchInput'), sort: $('sortSelect'), tags: $('tagFilters'),
