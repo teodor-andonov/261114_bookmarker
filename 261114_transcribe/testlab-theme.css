@@ -1,0 +1,38 @@
+/* Transcribe defaults to its original dark palette; light is opt-in/system. */
+:root[data-theme="light"] {
+  --bg:#f8faf7; --panel:#fff; --edge:#d8e2d9; --text:#20342a;
+  --muted:#637368; --soft:#516d59; --accent:#337e52;
+  --hover:#f1f5f0; --input:#f9faf8;
+  background:var(--bg); color:var(--text);
+}
+:root[data-theme="light"] .kicker,
+:root[data-theme="light"] .bottom-bar,
+:root[data-theme="light"] .hint,
+:root[data-theme="light"] .output-note,
+:root[data-theme="light"] .segments-placeholder,
+:root[data-theme="light"] .model-hint,
+:root[data-theme="light"] .audio-info {color:#607467}
+:root[data-theme="light"] .private-indicator {color:#326f4c}
+:root[data-theme="light"] .brand-version {color:#8a9c8e}
+:root[data-theme="light"] .hero h1 .arrow {color:#4a9c68}
+:root[data-theme="light"] .section-index {border-color:#a6c6b1}
+:root[data-theme="light"] .drop-zone {background:#f1f7f0;border-color:#9cbea6}
+:root[data-theme="light"] .drop-zone:hover,
+:root[data-theme="light"] .drop-zone.dragging {background:#e8f2e7;border-color:var(--accent)}
+:root[data-theme="light"] .drop-zone>span:not(.upload-icon),
+:root[data-theme="light"] .drop-zone small {color:#607b66}
+:root[data-theme="light"] .secondary-button {color:#284733;background:#f2f6f2;border-color:#b9cbbd}
+:root[data-theme="light"] .secondary-button:not(:disabled):hover {background:#e5eee6}
+:root[data-theme="light"] .fixed-setting,
+:root[data-theme="light"] .setting select {border-color:#b9cbbd;color:#274031;background-color:#f7faf6}
+:root[data-theme="light"] .file-glyph {border-color:#bfcec1}
+:root[data-theme="light"] .primary-button {color:#fff}
+:root[data-theme="light"] .primary-button:not(:disabled):hover {background:#256941}
+:root[data-theme="light"] .progress-track {background:#dce9dd}
+:root[data-theme="light"] .result-state {border-color:#c3d3c6;color:#526e5b}
+:root[data-theme="light"] .result-state.done {border-color:#8eb79b}
+:root[data-theme="light"] #transcript {border-color:#c4d2c7;color:var(--text)}
+:root[data-theme="light"] #transcript::placeholder {color:#718879}
+:root[data-theme="light"] .segment {background:#f2f7f2;border-color:#d5e4d5}
+:root[data-theme="light"] .segment span {color:#31483a}
+:root[data-theme="light"] .cache-report {color:#376c4c;background:#eff7f0;border-color:#c0dac6}
