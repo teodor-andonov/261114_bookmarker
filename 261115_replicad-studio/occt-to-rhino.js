@@ -131,6 +131,7 @@ export function convertExactPlanarBrep(shape, rhino) {
             newFace
           );
           if (!loop) throw new Error("Could not construct a Rhino trimming loop");
+          if (wires.length > 1) console.log("3dm loop debug", {faceIndex, wireIndex, loopType: loop.loopType, isInner: loop.loopType === rhino.BrepLoopType.Inner, expectedInner: wireIndex > 0, loopCount: brep.loops.count});
           const loopEdges = wire.edges;
           try {
             const ordered = orderedWireEdges(loopEdges);
