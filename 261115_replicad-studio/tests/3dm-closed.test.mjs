@@ -38,3 +38,30 @@ test("OCCT six-face box converts into ONE valid CLOSED Rhino NURBS Brep", {timeo
   assert.equal(readBrep.faces.count,6);
   console.log("Exact closed box .3dm verified", bytes.length,"bytes");
 });
+
+test("planar Boolean cut and union export as exact closed Rhino B-reps", { timeout: 120000 }, async () => {
+  const rhino = await initRhino();
+  const oc = await initOC();
+  replicad.setOC(oc);
+  const plate = replicad.makeBaseBox(40, 30, 12);
+  const cutter = replicad.makeBaseBox(10, 10, 20).translateZ(-3);
+  const joined = plate.fuse(replicad.makeBaseBox(18, 15, 18).translate([24, 0, 0]));
+  const drilled = plate.cut(cutter);
+
+  for (const [name, shape] of [["through-hole", drilled], ["union", joined]]) {
+    const brep = convertExactPlanarBrep(shape, rhino);
+    assert.ok(brep, name + " should convert using exact planar faces and edges");
+    console.log(name, { faces:brep.faces.count, edges:brep.edges.count, vertices:brep.vertices.count,
+      loops:brep.loops.count, trims:brep.trims.count, isSolid:brep.isSolid,
+      topology:brep.isValidTopology(), geometry:brep.isValidGeometry() });
+    assert.equal(brep.isSolid, true, name + " must remain closed");
+    assert.equal(brep.isValidTopology()[0], true, name);
+    assert.equal(brep.isValidGeometry()[0], true, name);
+    const doc = new rhino.File3dm();
+    doc.objects.addBrep(brep);
+    const reload = rhino.File3dm.fromByteArray(doc.toByteArray());
+    assert.ok(reload, name + " should reopen");
+    const reopenedBrep = [...reload.objects][0].geometry;
+    assert.equal(reopenedBrep.isSolid, true, name + " should stay solid after reopening");
+  }
+});
