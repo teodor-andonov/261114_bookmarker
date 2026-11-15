@@ -1,33 +1,69 @@
-name: Test Linkbook
+name: Validate Testlab prototypes and shared UI
 on:
   pull_request:
-    paths:
-      - '261114_linkbook/**'
-      - '.github/scripts/build_site.py'
-      - '.github/workflows/linkbook-tests.yml'
+    branches: [main]
   push:
     branches:
       - 'dev/**'
-    paths:
-      - '261114_linkbook/**'
-      - '.github/scripts/build_site.py'
-      - '.github/workflows/linkbook-tests.yml'
+
 jobs:
-  check:
+  shared-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test Linkbook
+        run: cd 261114_linkbook && npm test
+      - name: Test Transcribe
+        run: cd 261114_transcribe && npm test
+      - name: Check vanilla JavaScript syntax
+        run: |
+          node --check site.js
+          node --check prototype-shell.js
+          node --check 261114_linkbook/app.js
+          node --check 261114_linkbook/metadata.js
+          node --check 261114_transcribe/app.js
+      - name: Build gallery and validate generated metadata and chrome
+        run: |
+          python3 .github/scripts/build_site.py
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          catalog = json.loads(Path('dist/catalog.json').read_text())['projects']
+          assert len(catalog) >= 3
+          for project in catalog:
+              folder = project['folder']
+              assert project['version'], f'{folder} has no version'
+              assert project['createdAt'], f'{folder} has no first commit'
+              assert project['updatedAt'], f'{folder} has no last commit'
+              assert project['updatedAt'] >= project['createdAt']
+              page = Path('dist') / folder / 'index.html'
+              html = page.read_text()
+              assert 'prototype-shell.css' in html, folder
+              assert 'prototype-shell.js' in html, folder
+              assert 'testlab-theme.css' in html, folder
+              assert 'appVersion' not in html and 'buildSha' not in html, folder
+          assert 'card-facts' in Path('dist/site.js').read_text()
+          print('Validated', len(catalog), 'prototype cards and shared controls')
+          PY
+
+  replicad:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run Linkbook unit tests
-        run: cd 261114_linkbook && npm test
-      - name: Check JavaScript syntax
+      - name: Install CAD dependencies
+        working-directory: 261115_replicad-studio
+        run: npm install --no-audit --no-fund
+      - name: Test and build Replicad Studio
+        working-directory: 261115_replicad-studio
         run: |
-          node --check 261114_linkbook/metadata.js
-          node --check 261114_linkbook/app.js
-      - name: Build Testlab and verify release marker
-        run: |
-          python3 .github/scripts/build_site.py
-          grep -q 'v0.2.0-alpha.1' dist/261114_linkbook/index.html
-          grep -Eq 'id="buildSha">[0-9a-f]{7}<' dist/261114_linkbook/index.html
+          npm test
+          npm run test:cad
+          npm run build
