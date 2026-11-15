@@ -49,3 +49,32 @@ test("all bundled demos are executable plain-JS Replicad model sources", () => {
   assert.match(DEMOS[1].source, /\.fillet\(/);
   assert.match(DEMOS[1].source, /return \[/);
 });
+
+test("Boolean example builds two separate shapes through expected CAD operations", () => {
+  const log = [];
+  class Shape {
+    constructor(kind) { this.kind = kind; }
+    fillet(radius) { assert.ok(radius > 0); log.push("fillet"); return this; }
+    cut(other) { assert.ok(other instanceof Shape); log.push("cut"); return this; }
+    translate() { log.push("translate"); return this; }
+    translateZ() { return this; }
+  }
+  const mockReplicad = {
+    makeBaseBox() { return new Shape("box"); },
+    drawCircle() {
+      return {
+        sketchOnPlane() { return this; },
+        extrude() { return new Shape("cylinder"); },
+      };
+    },
+  };
+  const demo = DEMOS.find(entry => entry.id === "booleans");
+  const { main, defaultParams } = new Function("replicad", demo.source +
+    "\\nreturn { main, defaultParams };")(mockReplicad);
+  const output = main(mockReplicad, defaultParams);
+  assert.equal(output.length, 2);
+  assert.deepEqual(output.map(item => item.name), ["Drilled plate", "Rounded block"]);
+  assert.ok(output.every(item => item.shape instanceof Shape));
+  assert.ok(log.includes("cut"));
+  assert.equal(log.filter(operation => operation === "fillet").length, 2);
+});
