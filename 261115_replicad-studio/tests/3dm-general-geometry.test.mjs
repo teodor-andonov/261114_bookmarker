@@ -50,7 +50,7 @@ test("all 143 complex demo 3D edges become exact Rhino curves", {timeout:120000}
     );
     a.delete();b.delete();
     assert.ok(ds<1e-5,"NURBS curve does not start/end on source OCCT edge "+ds);
-    count++;data.curve.delete?.();
+    count++;data.curve?.delete?.();
    }catch(error){
     console.log("EDGE FAILED",count,"type",edge.geomType,"error",error?.message||String(error));throw error;
    }finally{edge.delete();}
