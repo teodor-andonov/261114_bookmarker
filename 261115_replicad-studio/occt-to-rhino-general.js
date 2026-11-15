@@ -35,7 +35,7 @@ function orderedWireInUV(edges,face,oc) {
       // Avoid exponential ambiguity for a malformed or multi-seam wire.
       if(++searchVisits>25000)return false;
       if(!unused.size)return near(end,start);
-      for(const i of unused){
+      for(const i of [...unused]){
         const e=pending[i];
         for(const reverse of [false,true]){
           const entry=reverse?e.b:e.a;
