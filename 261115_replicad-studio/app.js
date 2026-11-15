@@ -1,9 +1,57 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { syncFaces, syncLines } from "replicad-threejs-helper";
+import { EditorState } from "@codemirror/state";
+import { EditorView, lineNumbers, highlightActiveLine, keymap, drawSelection } from "@codemirror/view";
+import { javascript } from "@codemirror/lang-javascript";
+import { oneDark } from "@codemirror/theme-one-dark";
+import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
+import { bracketMatching, indentOnInput } from "@codemirror/language";
 
 const $ = id => document.getElementById(id);
-const code = $("code");
+let programmaticEditorUpdate = false;
+const editor = new EditorView({
+  state: EditorState.create({
+    doc: "",
+    extensions: [
+      lineNumbers(),
+      highlightActiveLine(),
+      drawSelection(),
+      history(),
+      indentOnInput(),
+      bracketMatching(),
+      javascript(),
+      oneDark,
+      keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
+      EditorView.updateListener.of(update => {
+        if (update.docChanged && !programmaticEditorUpdate) onSourceEdited();
+      }),
+      EditorView.theme({
+        "&": { height: "100%", fontSize: "12.5px" },
+        ".cm-scroller": { overflow: "auto", fontFamily: 'ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace' },
+        ".cm-content": { minHeight: "100%", padding: "14px 0" },
+        ".cm-gutters": { backgroundColor: "#1a2024", borderRight: "1px solid #333d45" },
+      }),
+    ],
+  }),
+  parent: $("code"),
+});
+// Preserve a simple code.value interface for the file system and worker paths.
+const code = {
+  get value() { return editor.state.doc.toString(); },
+  set value(source) {
+    programmaticEditorUpdate = true;
+    try {
+      editor.dispatch({
+        changes: { from: 0, to: editor.state.doc.length, insert: source },
+        selection: { anchor: 0 },
+        scrollIntoView: true,
+      });
+    } finally {
+      programmaticEditorUpdate = false;
+    }
+  },
+};
 const fileNameLabel = $("fileName");
 const unsavedLabel = $("unsaved");
 const statusLabel = $("statusText");
@@ -70,6 +118,7 @@ function setSource(source, name, handle = null) {
   setName(name);
   setDirty(false);
   built = false;
+  cameraHasBeenFitted = false;
   exportsEnabled(false);
   build(null, "run");
 }
@@ -311,19 +360,12 @@ $("stlButton").addEventListener("click", () => {
   status("Preparing STL mesh…");
   send("export", { format: "stl" });
 });
-code.addEventListener("input", () => {
+function onSourceEdited() {
   setDirty(true);
   built = false;
   exportsEnabled(false);
   status("Code changed · press Run");
-});
-code.addEventListener("keydown", event => {
-  if (event.key !== "Tab") return;
-  event.preventDefault();
-  const start = code.selectionStart;
-  code.setRangeText("  ", start, code.selectionEnd, "end");
-  code.dispatchEvent(new Event("input"));
-});
+}
 window.addEventListener("keydown", event => {
   if (!(event.ctrlKey || event.metaKey)) return;
   if (event.key.toLowerCase() === "s") {
@@ -385,8 +427,14 @@ function showMeshes(meshes) {
       bodyGroup.add(new THREE.LineSegments(lineGeometry, new THREE.LineBasicMaterial({ color: 0x273b4d })));
     }
   }
-  fitModel();
+  // Preserve the user's camera and orbit target on parameter-driven rebuilds.
+  // New files and explicit Fit are the only automatic framing actions.
+  if (!cameraHasBeenFitted) {
+    fitModel();
+    cameraHasBeenFitted = true;
+  }
 }
+let cameraHasBeenFitted = false;
 function fitModel() {
   if (!bodyGroup.children.length) return;
   const bounds = new THREE.Box3().setFromObject(bodyGroup);
@@ -400,6 +448,7 @@ function fitModel() {
   camera.far = Math.max(2000, extent * 100);
   camera.updateProjectionMatrix();
   controls.update();
+  cameraHasBeenFitted = true;
 }
 $("fitButton").addEventListener("click", fitModel);
 $("gridButton").addEventListener("click", () => {
