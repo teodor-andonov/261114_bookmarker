@@ -67,15 +67,11 @@ const defaultParams = {
   width: 60,
   depth: 40,
   height: 30,
-  cornerRadius: 5,
 };
 
 const main = (replicad, params) => {
-  const { width, depth, height, cornerRadius } = params;
-  const radius = Math.max(0.1, Math.min(cornerRadius, width / 2 - 0.1, depth / 2 - 0.1));
-  return replicad.drawRoundedRectangle(width, depth, radius)
-    .sketchOnPlane()
-    .extrude(height);
+  const { width, depth, height } = params;
+  return replicad.makeBaseBox(width, depth, height);
 };
 `;
 
@@ -111,6 +107,7 @@ function filenameFor(extension) {
 function exportsEnabled(enabled) {
   $("stepButton").disabled = !enabled;
   $("stlButton").disabled = !enabled;
+  $("threeDmButton").disabled = !enabled;
 }
 function setSource(source, name, handle = null) {
   code.value = source;
@@ -173,8 +170,9 @@ worker.addEventListener("message", event => {
     }
   } else if (data.type === "exported") {
     const type = data.format;
-    const mime = type === "step" ? "model/step" : "model/stl";
-    saveBlob(new Blob([data.bytes], { type: mime }), filenameFor(type === "step" ? "step" : "stl"), mime, false)
+    const mime = type === "step" ? "model/step" : type === "3dm" ? "application/octet-stream" : "model/stl";
+    const extension = type === "step" ? "step" : type === "3dm" ? "3dm" : "stl";
+    saveBlob(new Blob([data.bytes], { type: mime }), filenameFor(extension), mime, false)
       .then(() => status(type.toUpperCase() + " export ready", "ok"))
       .catch(error => status("Export save failed: " + error.message, "error"));
   }
@@ -359,6 +357,11 @@ $("stlButton").addEventListener("click", () => {
   if (!built) return;
   status("Preparing STL mesh…");
   send("export", { format: "stl" });
+});
+$("threeDmButton").addEventListener("click", () => {
+  if (!built) return;
+  status("Preparing exact Rhino B-reps…");
+  send("export", { format: "3dm" });
 });
 function onSourceEdited() {
   setDirty(true);
