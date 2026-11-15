@@ -32,7 +32,7 @@ function makeSplineSurface(rhino,bs) {
   return surf;
 }
 
-function makeAnalyticCircleSweep(face,rhino,bounds) {
+function makeAnalyticCircleSweep(evaluate,rhino,bounds) {
   // Exact degree-2 rational circular arcs for cylindrical and conical
   // analytic faces, with a degree-1 linear generatrix in V. Angular slices
   // no greater than 90 degrees avoid approximating a circle with polygons.
@@ -53,9 +53,9 @@ function makeAnalyticCircleSweep(face,rhino,bounds) {
     const {start,end,middle,w}=segments[s];
     const row=[];
     for(const v of [vMin,vMax]){
-      const a=take(face.pointOnSurface(start,v));
-      const b=take(face.pointOnSurface(middle,v));
-      const c=take(face.pointOnSurface(end,v));
+      const a=evaluate([start,v]);
+      const b=evaluate([middle,v]);
+      const c=evaluate([end,v]);
       const control=b.map((m,i)=>(2*(1+w)*m-a[i]-c[i])/(2*w));
       row.push([a,control,c]);
     }
@@ -94,19 +94,22 @@ export function makeNurbsFace(face,rhino,oc) {
   const {uMin,uMax,vMin,vMax}=bounds;
   if(!finite([uMin,uMax,vMin,vMax])||uMax<=uMin||vMax<=vMin)
     throw new Error("OpenCascade face has invalid UV bounds: "+type);
+  // Face.pointOnSurface uses normalized [0,1]; evaluate native OCCT UV
+  // on the underlying geometry instead, preserving actual dimensions.
+  const native=oc.BRep_Tool.Surface(face.wrapped);
+  const evaluate=([u,v])=>position(native.Value(u,v));
   let surface;
   if(type==="PLANE") {
     surface=new rhino.NurbsSurface(3,false,2,2,2,2);
     for(let i=0;i<2;i++)for(let j=0;j<2;j++){
-      const p=take(face.pointOnSurface(i?uMax:uMin,j?vMax:vMin));
+      const p=evaluate([i?uMax:uMin,j?vMax:vMin]);
       if(!surface.points.setPoint(i,j,point3(p)))throw Error("Planar control point failed");
     }
     for(let i=0;i<2;i++){surface.knotsU.set(i,i);surface.knotsV.set(i,i);}
   }else if(type==="CYLINDRE"||type==="CONE"){
-    surface=makeAnalyticCircleSweep(face,rhino,bounds);
+    surface=makeAnalyticCircleSweep(evaluate,rhino,bounds);
   }else{
-    const source=oc.BRep_Tool.Surface(face.wrapped);
-    const bs=oc.GeomConvert.SurfaceToBSplineSurface(source);
+    const bs=oc.GeomConvert.SurfaceToBSplineSurface(native);
     surface=makeSplineSurface(rhino,bs);
   }
   const du=surface.domain(0),dv=surface.domain(1);
@@ -114,7 +117,7 @@ export function makeNurbsFace(face,rhino,oc) {
   const map=(uv)=>{
     if(type==="PLANE")
       return [(uv[0]-uMin)/(uMax-uMin),(uv[1]-vMin)/(vMax-vMin)];
-    const expected=take(face.pointOnSurface(uv[0],uv[1]));
+    const expected=evaluate(uv);
     let u=Math.max(du.T0,Math.min(du.T1,uv[0]));
     let v=Math.max(dv.T0,Math.min(dv.T1,uv[1]));
     const evaluate=(x,y)=>{const p=surface.pointAt(x,y);return [p.X,p.Y,p.Z];};
@@ -143,7 +146,7 @@ export function makeNurbsFace(face,rhino,oc) {
         " target="+JSON.stringify(expected)+" actual="+JSON.stringify(p));
     return [u,v];
   };
-  return {surface,map,domain,type};
+  return {surface,map,domain,type,evaluate};
 }
 
 export function makeNurbsEdge(edge,rhino,oc) {
@@ -214,7 +217,7 @@ export function sampleTrim(adaptor,faceData,face,rhino,{tolerance=5e-5,maxDepth=
   };
   const sourcePoint=t=>{
     const p=adaptor.Value(t);
-    return take(face.pointOnSurface(p.X(),p.Y()));
+    return faceData.evaluate([p.X(),p.Y()]);
   };
   const sample=(t0,p0,t1,p1,depth)=>{
     const mid=(t0+t1)/2,pm=mapped(mid);
