@@ -5,6 +5,7 @@ import initRhino from "rhino3dm-beta";
 import * as replicad from "replicad";
 import { DEMOS } from "../examples.js";
 import {convertGeneralNurbsBrep} from "../occt-to-rhino-general.js";
+import {createGeneralNurbs3dm} from "../rhino-general-core.js";
 
 test("actual filleted and Boolean-unioned complex demo exports ONE closed Rhino NURBS Brep", {timeout:120000},async()=>{
  const rh=await initRhino();const oc=await initOC();replicad.setOC(oc);
@@ -31,4 +32,28 @@ test("actual filleted and Boolean-unioned complex demo exports ONE closed Rhino 
  assert.equal(imported.isSolid,true);
  assert.equal(imported.isValidTopology()[0],true);
  console.log("Filleted Boolean demo exact Rhino geometry preserved in .3dm",bytes.length,"bytes");
+});
+
+test("production general 3DM writer preserves filleted Boolean and separate-part assembly", {timeout:120000},async()=>{
+  const rh=await initRhino(),oc=await initOC();replicad.setOC(oc);
+  const demo=DEMOS.find(x=>x.id==="booleans");
+  const {main,defaultParams}=new Function("replicad",demo.source+"\nreturn {main,defaultParams};")(replicad);
+  for(const joined of [true,false]){
+    const shapes=main(replicad,{...defaultParams,unionParts:joined});
+    const entries=(Array.isArray(shapes)?shapes:[{shape:shapes,name:"Unioned CAD solid"}]);
+    const bytes=createGeneralNurbs3dm(entries,rh,oc);
+    assert.ok(bytes.byteLength>50000);
+    const read=rh.File3dm.fromByteArray(bytes);
+    assert.ok(read);
+    const objects=[...read.objects];
+    assert.equal(objects.length,joined?1:2);
+    for(const object of objects){
+      const g=object.geometry;
+      assert.ok(g instanceof rh.Brep && g.isSolid);
+      assert.equal(g.isValidTopology()[0],true);
+      assert.equal(g.isValidGeometry()[0],true);
+    }
+    assert.equal(read.settings.modelUnitSystem,rh.UnitSystem.Millimeters);
+    console.log("Production general export",joined?"one fused solid":"two separate solids",bytes.length,"bytes");
+  }
 });
