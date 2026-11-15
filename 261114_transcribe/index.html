@@ -48,7 +48,8 @@
           </div>
           <p class="model-hint">Fast, lightweight English-only model. Plain-text recognition first; timed segments are approximate.</p>
           <p id="audioInfo" class="model-hint audio-info" aria-live="polite"></p>
-          <div class="model-storage"><button id="clearModelButton" class="secondary-button" type="button">Clear downloaded models</button><span>Removes Transcribe's model cache, including its old Tiny/Base/Small downloads. Other apps' data stays intact.</span></div>
+          <div class="model-storage"><button id="inspectModelButton" class="secondary-button" type="button">Check cached models</button><button id="clearModelButton" class="secondary-button" type="button">Clear downloaded models</button><span>Checks the Tiny cache and known previous Whisper downloads without touching other apps.</span></div>
+          <div id="modelCacheStatus" class="cache-report" role="status" aria-live="polite">Tap “Check cached models” to see what's left on this device.</div>
           <button id="transcribeButton" class="primary-button" type="button" disabled><span id="transcribeLabel">Transcribe audio</span><span aria-hidden="true">↗</span></button>
           <button id="cancelButton" class="cancel-button" type="button" hidden>Cancel transcription</button>
           <div class="process-status" aria-live="polite"><div class="status-line"><span id="statusText">Choose a file to begin</span><span id="statusPercent"></span></div><div class="progress-track"><span id="progressFill"></span></div></div>

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MODEL_ID, CACHE_KEY, speechWindows, audioStats, isNearlySilent, levelAudio, asrOptions } from '../asr-config.js';
-import { TRANSCRIBE_CACHE, OLD_SHARED_CACHE, isOldTranscribeModelRequest, deleteTranscribeModels } from '../model-cache.js';
+import { TRANSCRIBE_CACHE, OLD_SHARED_CACHE, isOldTranscribeModelRequest, deleteTranscribeModels, inspectTranscribeModels } from '../model-cache.js';
 import { readFileSync } from 'node:fs';
 
 test('Tiny English is the only model and UI has no stale picker', () => {
@@ -64,4 +64,27 @@ test('cleanup only deletes our cache and specific old model keys',async()=>{
   assert.equal(stores.has(TRANSCRIBE_CACHE),false);
   assert.ok(stores.get(OLD_SHARED_CACHE).has(unrelated));
   assert.ok(stores.get('testlab-gallery-v2').has('gallery'));
+});
+
+test('cache inspector reports known old models without deleting other caches', async()=>{
+  const base='https://huggingface.co/onnx-community/whisper-base.en/resolve/main/onnx/model.onnx';
+  const small='https://huggingface.co/onnx-community/whisper-small.en/resolve/main/config.json';
+  const other='https://huggingface.co/another-project/model/resolve/main/model.onnx';
+  const entries = new Map([
+    [TRANSCRIBE_CACHE, ['https://huggingface.co/onnx-community/whisper-tiny.en/resolve/main/config.json']],
+    [OLD_SHARED_CACHE,[base,small,other]], ['testlab-gallery-v2',['https://example.com/other']]]
+  ]);
+  let deleted=false;
+  const cacheStorage={
+    keys: async()=>[...entries.keys()],
+    open: async(name)=>({keys:async()=>entries.get(name).map(url=>({url}))}),
+    delete: async()=>{deleted=true;throw Error('inspect should never delete');}
+  };
+  const inspected=await inspectTranscribeModels(cacheStorage);
+  assert.equal(inspected.currentFiles,1);
+  assert.equal(inspected.legacyFiles,2);
+  assert.equal(inspected.legacyByModel['whisper-base.en'],1);
+  assert.equal(inspected.legacyByModel['whisper-small.en'],1);
+  assert.equal(inspected.totalFiles,3);
+  assert.equal(deleted,false);
 });

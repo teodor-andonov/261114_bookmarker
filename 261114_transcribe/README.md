@@ -30,3 +30,9 @@ npm test
 
 Run from the folder over HTTP (the ES module worker will not work via file URLs).
 First model download requires a network connection. Recorded audio is processed on-device and not sent to a transcription service. Export the result before closing the tab.
+
+## Checking previous model downloads
+
+Tap **Check cached models** to inspect the new private cache and the former default `transformers-cache`. It reports known Tiny, multilingual Tiny, Base and Small model files separately. Tap **Clear downloaded models** to remove these entries; the app automatically checks again and reports whether any known files remain.
+
+This is verification for the **two known Cache Storage locations**, not for all browser-managed copies or the operating system's disk usage. Model file count is not a reliable measure of MB/GB. Chrome's generic HTTP cache can retain its own copies and is not independently inspectable or selectively erasable by this web page. Avoid **Clear site data** unless you intend to remove other GitHub Pages projects' origin storage too.

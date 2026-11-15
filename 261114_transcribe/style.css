@@ -11,3 +11,5 @@
 .model-storage{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px}
 .model-storage .secondary-button{flex-shrink:0}
 .model-storage span{font-size:11px;color:var(--muted);line-height:1.5;flex:1;min-width:170px}
+
+.cache-report{font-size:11px;line-height:1.55;color:#9cbea5;background:#18231c;border:1px solid #344c3b;border-radius:8px;padding:10px 12px;margin-top:9px;overflow-wrap:anywhere}

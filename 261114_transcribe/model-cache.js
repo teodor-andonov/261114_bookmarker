@@ -33,3 +33,32 @@ export async function deleteTranscribeModels(cacheStorage) {
   }
   return {removedFiles, removedPrivate};
 }
+
+
+// Inspect only Transcribe's private cache and the older Transformers.js default.
+// File counts are reliable for these named Cache Storage entries; byte sizes and
+// copies in the browser's ordinary HTTP cache aren't visible via this API.
+export async function inspectTranscribeModels(cacheStorage) {
+  const names = await cacheStorage.keys();
+  const current = {count:0, exists:names.includes(TRANSCRIBE_CACHE)};
+  const previous = Object.fromEntries([...OLD_MODELS].sort().map(name=>[name,0]));
+  let previousCount = 0;
+  if (current.exists) {
+    const dedicated = await cacheStorage.open(TRANSCRIBE_CACHE);
+    current.count = (await dedicated.keys()).length;
+  }
+  if (names.includes(OLD_SHARED_CACHE)) {
+    const shared = await cacheStorage.open(OLD_SHARED_CACHE);
+    for (const entry of await shared.keys()) {
+      if (!isOldTranscribeModelRequest(entry.url)) continue;
+      const url = new URL(entry.url);
+      const model = decodeURIComponent(url.pathname).split('/').filter(Boolean)[1];
+      previous[model]++;
+      previousCount++;
+    }
+  }
+  return {
+    currentFiles: current.count, legacyFiles: previousCount,
+    legacyByModel: previous, totalFiles: current.count + previousCount
+  };
+}

@@ -1,12 +1,12 @@
 import {formatClock, formatBytes, sanitizeSegments, makeSrt, safeDownloadStem} from './transcript-utils.js';
-import {deleteTranscribeModels} from './model-cache.js';
+import {deleteTranscribeModels, inspectTranscribeModels} from './model-cache.js';
 
 const $ = id => document.getElementById(id);
 const els = {
   fileInput: $('fileInput'), drop: $('dropZone'), fileDetails: $('fileDetails'), fileName: $('fileName'),
   fileMeta: $('fileMeta'), remove: $('removeFile'), player: $('audioPlayer'),
   record: $('recordButton'), recordLabel: $('recordLabel'), recordTime: $('recordTime'),
-  device: $('deviceSelect'), audioInfo: $('audioInfo'), clearModel: $('clearModelButton'),
+  device: $('deviceSelect'), audioInfo: $('audioInfo'), clearModel: $('clearModelButton'), inspectModel: $('inspectModelButton'), modelCacheStatus: $('modelCacheStatus'),
   start: $('transcribeButton'), startLabel: $('transcribeLabel'), cancel: $('cancelButton'),
   status: $('statusText'), percent: $('statusPercent'), fill: $('progressFill'),
   transcript: $('transcript'), resultState: $('resultState'), segments: $('segments'), segmentCount: $('segmentCount'),
@@ -43,6 +43,7 @@ function setBusy(value) {
   els.record.disabled = value;
   els.device.disabled = value;
   els.clearModel.disabled = value;
+  els.inspectModel.disabled = value;
   els.startLabel.textContent = value ? 'Transcribing…' : 'Transcribe audio';
 }
 function clearResults() {
@@ -235,6 +236,32 @@ els.start.addEventListener('click',async()=>{
   }catch(error){if(current===job){setBusy(false);status(error.message || String(error),0,true);}}
 });
 els.cancel.addEventListener('click',()=>{if(!busy)return;++job;if(worker){worker.terminate();worker=null;}setBusy(false);status('Cancelled. Audio remains available.',0);});
+function formatCacheInspection(info) {
+  const pretty = {
+    'whisper-tiny': 'Multilingual Tiny',
+    'whisper-tiny.en': 'Tiny English (old)',
+    'whisper-base.en': 'Base English (old)',
+    'whisper-small.en': 'Small English (old)'
+  };
+  const old = Object.entries(info.legacyByModel).filter(([, count]) => count > 0)
+    .map(([name, count]) => `${pretty[name] || name}: ${count} files`).join(' · ');
+  if (!info.totalFiles) return 'No known Transcribe model files remain in the two checked browser caches.';
+  return `New Tiny cache: ${info.currentFiles} files. Old downloads: ${old || 'none'}.`;
+}
+async function inspectModelStorage() {
+  if (!('caches' in window)) throw new Error('Browser Cache Storage is unavailable.');
+  const report = await inspectTranscribeModels(window.caches);
+  els.modelCacheStatus.textContent = formatCacheInspection(report) +
+    ' Counts are for known Cache Storage entries; browser HTTP cache is not included.';
+  return report;
+}
+els.inspectModel.addEventListener('click', async () => {
+  if (busy) return;
+  els.inspectModel.disabled = true;
+  try { await inspectModelStorage(); }
+  catch(error) {els.modelCacheStatus.textContent = 'Could not check cache: ' + (error.message || error);}
+  finally {els.inspectModel.disabled = false;}
+});
 els.clearModel.addEventListener('click', async () => {
   if (busy) return;
   const approved = confirm('Remove Transcribe model downloads from this browser? Models will be downloaded again if needed. Other app data will not be cleared.');
@@ -245,8 +272,10 @@ els.clearModel.addEventListener('click', async () => {
     if (worker) {worker.terminate();worker=null;}
     if (!('caches' in window)) throw new Error('Browser Cache Storage is unavailable.');
     const result = await deleteTranscribeModels(window.caches);
-    status(result.removedFiles ? `Removed ${result.removedFiles} cached model files. They will re-download when needed.`
-      : 'No matching cached Transcribe models found. Other site data was untouched.',0);
+    const after = await inspectModelStorage();
+    status(after.totalFiles === 0
+      ? `Cache cleanup verified: ${result.removedFiles} known model files removed; none remain in the checked caches.`
+      : `Removed ${result.removedFiles} files; ${after.totalFiles} known cached files remain. Run cleanup again or inspect them.`,0,after.totalFiles>0);
   } catch(error) {status('Cannot clear model cache: ' + (error.message || error),0,true);}
   finally {els.clearModel.disabled = false;}
 });
