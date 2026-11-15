@@ -43,14 +43,16 @@
           <div class="divider"></div>
           <div class="section-title settings-head"><span class="section-index">02</span><h2>Recognition settings</h2></div>
           <div class="setting-grid">
-            <label class="setting"><span>English speech model</span><select id="modelSelect"><option value="base" selected>Whisper Base · English (recommended)</option><option value="small">Whisper Small · English (higher accuracy)</option></select></label>
+            <label class="setting"><span>English speech model</span><span class="fixed-setting">Whisper Tiny · English</span></label>
             <label class="setting"><span>Processing</span><select id="deviceSelect"><option value="wasm">CPU · Most compatible</option><option value="webgpu">GPU · Experimental, when supported</option></select></label>
           </div>
-          <p id="modelHint" class="model-hint">Base English: better accuracy than Tiny, with a reasonable download and memory footprint.</p>
+          <p class="model-hint">Fast, lightweight English-only model. Plain-text recognition first; timed segments are approximate.</p>
+          <p id="audioInfo" class="model-hint audio-info" aria-live="polite"></p>
+          <div class="model-storage"><button id="clearModelButton" class="secondary-button" type="button">Clear downloaded models</button><span>Removes Transcribe's model cache, including its old Tiny/Base/Small downloads. Other apps' data stays intact.</span></div>
           <button id="transcribeButton" class="primary-button" type="button" disabled><span id="transcribeLabel">Transcribe audio</span><span aria-hidden="true">↗</span></button>
           <button id="cancelButton" class="cancel-button" type="button" hidden>Cancel transcription</button>
           <div class="process-status" aria-live="polite"><div class="status-line"><span id="statusText">Choose a file to begin</span><span id="statusPercent"></span></div><div class="progress-track"><span id="progressFill"></span></div></div>
-          <p class="hint">The speech model downloads on first use. Your recording stays on this device. For the best experience, start with clips under 5 minutes.</p>
+          <p class="hint">The small English model downloads once and is cached locally. This experiment is optimised for clear, short English recordings (try 10–30 seconds first).</p>
         </section>
         <section class="panel output-panel" aria-labelledby="result-heading">
           <div class="output-head"><div class="section-title"><span class="section-index">03</span><h2 id="result-heading">Transcript</h2></div><span id="resultState" class="result-state">EMPTY</span></div>
@@ -58,10 +60,10 @@
           <div class="output-actions"><button class="secondary-button" id="copyButton" disabled>Copy text</button><button class="secondary-button" id="txtButton" disabled>Download .txt</button><button class="secondary-button" id="srtButton" disabled title="Export original timed segments">Download .srt</button></div>
           <div class="segments-head"><h3>Timed segments</h3><span id="segmentCount">—</span></div>
           <div id="segments" class="segments"><p class="segments-placeholder">Time-linked phrases will appear after transcription. Tap a timestamp to seek in the audio.</p></div>
-          <p class="output-note">Text is editable. SRT uses the original timed segments, not edits made above. Export before closing: transcripts are not stored.</p>
+          <p class="output-note">Text is editable. SRT times approximate each audio chunk, not individual words. Changes to the transcript do not update SRT. Export before closing.</p>
         </section>
       </div>
-      <section class="bottom-bar"><span>WHISPER ENGLISH / TRANSFORMERS.JS</span><span>LOCALLY PROCESSED AUDIO · GITHUB PAGES</span></section>
+      <section class="bottom-bar"><span>WHISPER TINY ENGLISH / TRANSFORMERS.JS</span><span>LOCALLY PROCESSED AUDIO · GITHUB PAGES</span></section>
     </main>
   </div>
   <script type="module" src="./app.js"></script>

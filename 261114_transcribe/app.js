@@ -1,11 +1,12 @@
 import {formatClock, formatBytes, sanitizeSegments, makeSrt, safeDownloadStem} from './transcript-utils.js';
+import {deleteTranscribeModels} from './model-cache.js';
 
 const $ = id => document.getElementById(id);
 const els = {
   fileInput: $('fileInput'), drop: $('dropZone'), fileDetails: $('fileDetails'), fileName: $('fileName'),
   fileMeta: $('fileMeta'), remove: $('removeFile'), player: $('audioPlayer'),
   record: $('recordButton'), recordLabel: $('recordLabel'), recordTime: $('recordTime'),
-  model: $('modelSelect'), modelHint: $('modelHint'), device: $('deviceSelect'),
+  device: $('deviceSelect'), audioInfo: $('audioInfo'), clearModel: $('clearModelButton'),
   start: $('transcribeButton'), startLabel: $('transcribeLabel'), cancel: $('cancelButton'),
   status: $('statusText'), percent: $('statusPercent'), fill: $('progressFill'),
   transcript: $('transcript'), resultState: $('resultState'), segments: $('segments'), segmentCount: $('segmentCount'),
@@ -40,8 +41,8 @@ function setBusy(value) {
   els.fileInput.disabled = value;
   els.remove.disabled = value;
   els.record.disabled = value;
-  els.model.disabled = value;
   els.device.disabled = value;
+  els.clearModel.disabled = value;
   els.startLabel.textContent = value ? 'Transcribing…' : 'Transcribe audio';
 }
 function clearResults() {
@@ -73,6 +74,7 @@ function selectAudio(file) {
   els.fileMeta.textContent = `${formatBytes(file.size)} · ${file.type || 'audio file'}`;
   els.fileDetails.hidden = false;
   clearResults();
+  els.audioInfo.textContent = '';
   status('Ready to transcribe',0);
   setBusy(false);
 }
@@ -86,6 +88,7 @@ function removeAudio() {
   els.fileDetails.hidden = true;
   els.fileInput.value = '';
   clearResults();
+  els.audioInfo.textContent = '';
   setBusy(false);
   status('Choose a file to begin',0);
 }
@@ -96,13 +99,6 @@ for (const event of ['dragenter','dragover']) els.drop.addEventListener(event, e
 for (const event of ['dragleave','drop']) els.drop.addEventListener(event, e => {e.preventDefault(); els.drop.classList.remove('dragging');});
 els.drop.addEventListener('drop', e => { if (!busy) selectAudio([...e.dataTransfer.files].find(Boolean)); });
 els.remove.addEventListener('click', removeAudio);
-function updateModelHint() {
-  els.modelHint.textContent = els.model.value === 'small'
-    ? 'Small English: higher accuracy but a larger download and much slower processing. Best on desktop.'
-    : 'Base English: better accuracy than Tiny, with a reasonable download and memory footprint.';
-}
-els.model.addEventListener('change', updateModelHint);
-updateModelHint();
 
 function stopMediaTracks() {
   mediaStream?.getTracks().forEach(track => track.stop());
@@ -197,6 +193,12 @@ function onWorkerMessage(event) {
   } else if (d.type === 'status') {
     const estimate = /recognis|transcrib/i.test(d.message) ? 72 : 18;
     status(d.message,estimate);
+  } else if (d.type === 'audio-info') {
+    els.audioInfo.textContent = d.silent
+      ? 'Audio level is almost silent. Check the recording or microphone.'
+      : `Audio detected: about ${d.dbfs} dBFS (RMS). Quiet passages get modest amplification.`;
+  } else if (d.type === 'segment-progress') {
+    status(`Processed ${d.completed} of ${d.total} audio chunks`,72 + Math.round((d.completed / d.total) * 24));
   } else if (d.type === 'notice') {
     status(d.message,35);
   } else if (d.type === 'result') {
@@ -209,7 +211,9 @@ function onWorkerMessage(event) {
     els.txt.disabled=!text;
     renderSegments(d.chunks);
     els.srt.disabled=!transcriptSegments.length;
-    status(text ? `Transcription complete · ${d.device === 'webgpu' ? 'GPU' : 'CPU'}` : 'Finished, but no speech was detected.',100);
+    status(text ? `Transcription complete · ${d.device === 'webgpu' ? 'GPU' : 'CPU'}`
+      : d.silent ? 'The decoded audio is almost silent. Check the microphone and recording.'
+      : 'Audio was detected, but Tiny could not recognise words. Try a clear 10–30 second English clip.',100,!text);
     setBusy(false);
   } else if (d.type === 'error') {
     status(`Transcription failed: ${d.message}`,0,true);
@@ -227,10 +231,25 @@ els.start.addEventListener('click',async()=>{
     els.fileMeta.textContent=`${formatBytes(file.size)} · ${formatClock(duration)} · ${file.type || 'audio'}`;
     status('Loading speech engine…',10);
     const data=audio.buffer;
-    getWorker().postMessage({type:'transcribe',jobId:current,audio:data,modelKey:els.model.value,device:els.device.value},[data]);
+    getWorker().postMessage({type:'transcribe',jobId:current,audio:data,device:els.device.value},[data]);
   }catch(error){if(current===job){setBusy(false);status(error.message || String(error),0,true);}}
 });
 els.cancel.addEventListener('click',()=>{if(!busy)return;++job;if(worker){worker.terminate();worker=null;}setBusy(false);status('Cancelled. Audio remains available.',0);});
+els.clearModel.addEventListener('click', async () => {
+  if (busy) return;
+  const approved = confirm('Remove Transcribe model downloads from this browser? Models will be downloaded again if needed. Other app data will not be cleared.');
+  if (!approved) return;
+  els.clearModel.disabled = true;
+  try {
+    // Terminate to release on-device model memory before removing disk caches.
+    if (worker) {worker.terminate();worker=null;}
+    if (!('caches' in window)) throw new Error('Browser Cache Storage is unavailable.');
+    const result = await deleteTranscribeModels(window.caches);
+    status(result.removedFiles ? `Removed ${result.removedFiles} cached model files. They will re-download when needed.`
+      : 'No matching cached Transcribe models found. Other site data was untouched.',0);
+  } catch(error) {status('Cannot clear model cache: ' + (error.message || error),0,true);}
+  finally {els.clearModel.disabled = false;}
+});
 
 function downloadText(text,extension,mime) {
   const blob=new Blob([text],{type:mime});

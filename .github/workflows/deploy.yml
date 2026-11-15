@@ -22,6 +22,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Test Transcribe prototype
+        run: cd 261114_transcribe && npm test
       - name: Assemble landing page and self-contained prototypes
         run: python3 .github/scripts/build_site.py
       - uses: actions/configure-pages@v5

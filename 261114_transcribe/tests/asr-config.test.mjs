@@ -1,47 +1,65 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ENGLISH_MODELS, asrOptions } from '../asr-config.js';
+import { MODEL_ID, CACHE_KEY, speechWindows, audioStats, isNearlySilent, levelAudio, asrOptions } from '../asr-config.js';
+import { TRANSCRIBE_CACHE, OLD_SHARED_CACHE, isOldTranscribeModelRequest, deleteTranscribeModels } from '../model-cache.js';
+import { readFileSync } from 'node:fs';
 
-test('offers only English-trained model checkpoints', () => {
-  assert.deepEqual(Object.keys(ENGLISH_MODELS), ['base', 'small']);
-  assert.equal(ENGLISH_MODELS.base.id, 'onnx-community/whisper-base.en');
-  assert.equal(ENGLISH_MODELS.small.id, 'onnx-community/whisper-small.en');
+test('Tiny English is the only model and UI has no stale picker', () => {
+  assert.equal(MODEL_ID,'onnx-community/whisper-tiny.en');
+  assert.equal(CACHE_KEY,TRANSCRIBE_CACHE);
+  const html = readFileSync(new URL('../index.html',import.meta.url),'utf8');
+  const app = readFileSync(new URL('../app.js',import.meta.url),'utf8');
+  assert.match(html,/Whisper Tiny · English/);
+  assert.doesNotMatch(html,/modelSelect|languageSelect|Whisper Base · English|Whisper Small · English/);
+  assert.match(html,/id="clearModelButton"/);
+  assert.match(app,/clearModelButton/);
 });
-
-test('English-only generation never sets language or task', () => {
-  for (const seconds of [8, 28, 29, 30, 65]) {
-    const options = asrOptions(seconds * 16000);
-    assert.equal('task' in options, false);
-    assert.equal('language' in options, false);
-    assert.equal('is_multilingual' in options, false);
-    assert.equal(options.return_timestamps, true);
-  }
+test('decoding configuration avoids timestamp and multilingual restrictions', () => {
+  const opts = asrOptions();
+  assert.equal(opts.return_timestamps,false);
+  for(const forbidden of ['task','language','is_multilingual','chunk_length_s','stride_length_s']) assert.equal(forbidden in opts,false);
 });
-
-test('short clips avoid chunk seam duplication', () => {
-  const options = asrOptions(12 * 16000);
-  assert.equal('chunk_length_s' in options, false);
-  assert.equal('stride_length_s' in options, false);
+test('audio segments never overlap, and short tails are merged', () => {
+  const samples=new Float32Array(50*16000);
+  const windows=speechWindows(samples);
+  assert.equal(windows.length,3);
+  assert.deepEqual(windows.map(w=>[w.start,w.end]),[[0,24],[24,48],[48,50]]);
+  for(let i=1;i<windows.length;i++)assert.equal(windows[i].start,windows[i-1].end);
+  assert.deepEqual(speechWindows(new Float32Array(27*16000)).map(x=>[x.start,x.end]),[[0,27]]);
+  assert.deepEqual(speechWindows(new Float32Array(10*16000)).map(x=>[x.start,x.end]),[[0,10]]);
 });
-
-test('long clips use smaller overlaps and mild repetition control', () => {
-  const options = asrOptions(150 * 16000);
-  assert.equal(options.chunk_length_s, 25);
-  assert.equal(options.stride_length_s, 2);
-  assert.ok(options.repetition_penalty > 1 && options.repetition_penalty < 1.15);
-  assert.equal(options.no_repeat_ngram_size, 5);
+test('silence detection and quiet-gain correction are controlled', () => {
+  const silent=audioStats(new Float32Array(100));
+  assert.equal(isNearlySilent(silent),true);
+  const quiet=new Float32Array(100).fill(0.008);
+  const stats=audioStats(quiet);
+  assert.equal(isNearlySilent(stats),false);
+  const boosted=levelAudio(quiet,stats);
+  assert.ok(boosted.gain>1 && boosted.gain<=4);
+  assert.ok(boosted.audio.every(x=>x<=0.95));
+  assert.throws(()=>speechWindows(new Float32Array()),/no samples/);
 });
-
-test('empty audio is rejected', () => {
-  assert.throws(() => asrOptions(0), /no samples/);
+test('only known legacy model URLs match; sibling app cache entries stay untouched', () => {
+  assert.equal(isOldTranscribeModelRequest('https://huggingface.co/onnx-community/whisper-base.en/resolve/main/onnx/model.onnx'),true);
+  assert.equal(isOldTranscribeModelRequest('https://huggingface.co/onnx-community/whisper-tiny.en/resolve/main/config.json'),true);
+  assert.equal(isOldTranscribeModelRequest('https://huggingface.co/other/model/resolve/main/onnx/model.onnx'),false);
+  assert.equal(isOldTranscribeModelRequest('https://evil.example/onnx-community/whisper-small.en/resolve/main/model.onnx'),false);
 });
-
-test('English model picker matches engine keys and provides model hint', async () => {
-  const { readFileSync } = await import('node:fs');
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const picker = html.split('id="modelSelect">')[1]?.split('</select>')[0] || '';
-  const optionValues = [...picker.matchAll(/<option value="([^"]+)"/g)].map(x => x[1]);
-  assert.deepEqual(optionValues, Object.keys(ENGLISH_MODELS));
-  assert.match(html, /id="modelHint"/);
-  assert.doesNotMatch(html, /id="languageSelect"|Whisper Tiny · Multilingual|WHISPER TINY/);
+test('cleanup only deletes our cache and specific old model keys',async()=>{
+  const model='https://huggingface.co/onnx-community/whisper-small.en/resolve/main/model.onnx';
+  const unrelated='https://huggingface.co/another-app/keep/resolve/main/model.onnx';
+  const stores=new Map([[TRANSCRIBE_CACHE,new Set(['some-model-file'])],[OLD_SHARED_CACHE,new Set([model,unrelated])],['testlab-gallery-v2',new Set(['gallery'])]]);
+  const fake={
+    keys:async()=>[...stores.keys()],
+    open:async key=>({
+      keys:async()=>[...(stores.get(key)||new Set)].map(url=>({url})),
+      delete:async request=>(stores.get(key)||new Set).delete(request.url)
+    }),
+    delete:async key=>stores.delete(key)
+  };
+  const result=await deleteTranscribeModels(fake);
+  assert.equal(result.removedFiles,2);
+  assert.equal(stores.has(TRANSCRIBE_CACHE),false);
+  assert.ok(stores.get(OLD_SHARED_CACHE).has(unrelated));
+  assert.ok(stores.get('testlab-gallery-v2').has('gallery'));
 });

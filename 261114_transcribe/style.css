@@ -4,3 +4,10 @@
 
 .fixed-setting{display:flex;align-items:center;min-height:44px;padding:11px 12px;border:1px solid #445047;border-radius:8px;background:var(--input);color:var(--text);font-size:12px;font-weight:700}
 .model-hint{margin:12px 0 -7px;color:#9baaa0;font-size:11px;line-height:1.5}
+
+/* Audio diagnostics and scoped model storage management */
+.audio-info:empty{display:none}
+.audio-info{color:#b7c7bb;margin-top:8px}
+.model-storage{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px}
+.model-storage .secondary-button{flex-shrink:0}
+.model-storage span{font-size:11px;color:var(--muted);line-height:1.5;flex:1;min-width:170px}
