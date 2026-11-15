@@ -1,0 +1,60 @@
+/* Shared Testlab controls are injected into every prototype at build time. */
+.testlab-floating-controls {
+  all: initial;
+  position: fixed;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  right: max(18px, env(safe-area-inset-right));
+  z-index: 2147483000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  pointer-events: none;
+}
+.testlab-floating-controls .testlab-floating-button {
+  all: unset;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #f8faf8;
+  border: 1px solid #bbc3bb;
+  color: #27302a;
+  box-shadow: 0 3px 14px #0002;
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: .7;
+  transition: opacity .16s, transform .16s, background .16s;
+  -webkit-tap-highlight-color: transparent;
+}
+.testlab-floating-controls .testlab-floating-button:hover,
+.testlab-floating-controls .testlab-floating-button:focus-visible {
+  opacity: 1;
+  transform: translateY(-2px);
+  background: #fff;
+}
+.testlab-floating-controls .testlab-floating-button:focus-visible {
+  outline: 3px solid #8fa6e9;
+  outline-offset: 3px;
+}
+.testlab-floating-controls svg {display:block; width:18px; height:18px; flex:none}
+:root[data-theme="dark"] {color-scheme: dark}
+:root[data-theme="light"] {color-scheme: light}
+:root[data-theme="dark"] .testlab-floating-controls .testlab-floating-button {
+  background: #252b29;
+  border-color: #59635b;
+  color: #e7ede9;
+  box-shadow: 0 3px 16px #0005;
+}
+:root[data-theme="dark"] .testlab-floating-controls .testlab-floating-button:hover,
+:root[data-theme="dark"] .testlab-floating-controls .testlab-floating-button:focus-visible {
+  background: #39413b;
+}
+@media (pointer: coarse) {
+  .testlab-floating-controls .testlab-floating-button {width:42px;height:42px;opacity:.9}
+}
+@media (prefers-reduced-motion:reduce) {
+  .testlab-floating-controls .testlab-floating-button {transition:none}
+}
