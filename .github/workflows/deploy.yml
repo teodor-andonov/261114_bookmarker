@@ -27,6 +27,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Test Linkbook metadata and covers
+        run: cd 261114_linkbook && npm test
       - name: Build browser-only Replicad Studio
         working-directory: 261115_replicad-studio
         run: |
