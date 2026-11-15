@@ -7,6 +7,8 @@ import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { bracketMatching, indentOnInput } from "@codemirror/language";
+import { DEMOS, NEW_MODEL } from "./examples.js";
+import { parameterEdit } from "./param-source.js";
 
 const $ = id => document.getElementById(id);
 let programmaticEditorUpdate = false;
@@ -62,26 +64,11 @@ const paramsNote = $("paramsNote");
 const placeholder = $("viewerPlaceholder");
 const worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
 
-const example = `// Replicad model — dimensions in millimetres.
-// Edit the code, then press Run. The controls below rebuild automatically.
-const defaultParams = {
-  width: 60,
-  depth: 40,
-  height: 30,
-};
-
-const main = (replicad, params) => {
-  const { width, depth, height } = params;
-  return replicad.makeBaseBox(width, depth, height);
-};
-`;
 
 let fileHandle = null;
 let fileName = "untitled.js";
 let dirty = false;
 let params = {};
-let defaultParams = {};
-let modelCodeEdited = false;
 let built = false;
 let lastBuildRequest = 0;
 let requestIndex = 0;
@@ -117,7 +104,6 @@ function setSource(source, name, handle = null) {
   setName(name);
   setDirty(false);
   built = false;
-  modelCodeEdited = false;
   cameraHasBeenFitted = false;
   exportsEnabled(false);
   build(null, "run");
@@ -138,7 +124,7 @@ function build(values = null, kind = "run") {
 }
 function autoBuild() {
   clearTimeout(queuedBuild);
-  queuedBuild = setTimeout(() => build({ ...params }, "auto"), 230);
+  queuedBuild = setTimeout(() => build(null, "auto"), 230);
 }
 worker.addEventListener("message", event => {
   const data = event.data;
@@ -159,11 +145,8 @@ worker.addEventListener("message", event => {
       showMeshes(data.meshes);
       built = true;
       exportsEnabled(true);
-      defaultParams = data.defaults;
-      if (request.kind !== "auto") {
-        params = { ...data.values };
-        renderParameters();
-      }
+      params = { ...data.values };
+      if (request.kind !== "auto") renderParameters();
       placeholder.hidden = true;
       status("Model ready · " + data.meshes.length + (data.meshes.length === 1 ? " shape" : " shapes"), "ok");
     } catch (error) {
@@ -193,9 +176,31 @@ function rowFor(name, value) {
   row.append(label);
 
   function changed(next) {
-    params[name] = next;
-    setDirty(true);
-    autoBuild();
+    if (Object.is(params[name], next)) return true;
+    try {
+      const edit = parameterEdit(code.value, name, next);
+      programmaticEditorUpdate = true;
+      try {
+        // Single focused edit: CodeMirror keeps the syntax, surrounding
+        // comments, undo history, and editor selection untouched.
+        editor.dispatch({
+          changes: { from: edit.from, to: edit.to, insert: edit.insert },
+          effects: EditorView.scrollIntoView(edit.from, { y: "center" }),
+        });
+      } finally {
+        programmaticEditorUpdate = false;
+      }
+      params[name] = next;
+      setDirty(true);
+      built = false;
+      lastBuildRequest = -1; // discard results from prior source revisions
+      exportsEnabled(false);
+      autoBuild();
+      return true;
+    } catch (error) {
+      status("Cannot update source: " + error.message, "error");
+      return false;
+    }
   }
   if (typeof value === "number") {
     const slider = document.createElement("input");
@@ -212,14 +217,22 @@ function rowFor(name, value) {
     input.value = String(value);
     input.setAttribute("aria-label", name + " value");
     slider.addEventListener("input", () => {
+      const previous = params[name];
       input.value = slider.value;
-      changed(Number(slider.value));
+      if (!changed(Number(slider.value))) {
+        slider.value = String(previous);
+        input.value = String(previous);
+      }
     });
     input.addEventListener("change", () => {
       const number = Number(input.value);
       if (!Number.isFinite(number)) return;
+      const previous = params[name];
       slider.value = String(number);
-      changed(number);
+      if (!changed(number)) {
+        slider.value = String(previous);
+        input.value = String(previous);
+      }
     });
     row.append(slider, input);
   } else if (typeof value === "boolean") {
@@ -228,7 +241,9 @@ function rowFor(name, value) {
     checkbox.type = "checkbox";
     checkbox.checked = value;
     checkbox.setAttribute("aria-label", name);
-    checkbox.addEventListener("change", () => changed(checkbox.checked));
+    checkbox.addEventListener("change", () => {
+      if (!changed(checkbox.checked)) checkbox.checked = params[name];
+    });
     row.append(filler, checkbox);
   } else {
     const filler = document.createElement("span");
@@ -236,7 +251,9 @@ function rowFor(name, value) {
     input.type = "text";
     input.value = String(value);
     input.setAttribute("aria-label", name);
-    input.addEventListener("change", () => changed(input.value));
+    input.addEventListener("change", () => {
+      if (!changed(input.value)) input.value = String(params[name]);
+    });
     row.append(filler, input);
   }
   return row;
@@ -255,17 +272,8 @@ function renderParameters() {
   paramsRoot.append(...list.map(([name, value]) => rowFor(name, value)));
 }
 
-// Save the current parameter values back into an ordinary portable JS model.
-// Only a plain object-literal defaultParams declaration is rewritten; otherwise
-// we refuse to silently discard unsaved parameter edits.
-function sourceWithParams() {
-  const changed = Object.keys(params).some(name => params[name] !== defaultParams[name]);
-  if (!changed) return code.value;
-  const re = /\b(?:const|let|var)\s+defaultParams\s*=\s*\{[\s\S]*?\}\s*;/;
-  if (!re.test(code.value)) throw new Error("Cannot save changed parameters: use a plain 'const defaultParams = { ... };' object.");
-  const formatted = "const defaultParams = " + JSON.stringify(params, null, 2) + ";";
-  return code.value.replace(re, formatted);
-}
+// Source is the only model state. Slider edits have already rewritten the
+// visible JavaScript, so Save never needs to apply hidden parameter overrides.
 async function saveBlob(blob, name, mime = "application/octet-stream", usePicker = true) {
   // Exports complete asynchronously in a worker; their file picker would lose
   // its required user activation, so export through a normal browser download.
@@ -292,7 +300,7 @@ async function saveBlob(blob, name, mime = "application/octet-stream", usePicker
 }
 async function saveCode(forceSaveAs = false) {
   try {
-    const source = sourceWithParams();
+    const source = code.value;
     const blob = new Blob([source], { type: "text/javascript" });
     if (!forceSaveAs && fileHandle) {
       const writable = await fileHandle.createWritable();
@@ -312,8 +320,6 @@ async function saveCode(forceSaveAs = false) {
       await saveBlob(blob, fileName, "text/javascript");
       fileHandle = null;
     }
-    code.value = source;
-    defaultParams = { ...params };
     setDirty(false);
     status("Model source saved", "ok");
   } catch (error) {
@@ -344,18 +350,48 @@ $("openInput").addEventListener("change", async event => {
   event.target.value = "";
 });
 $("openButton").addEventListener("click", openModel);
+const demoDialog = $("demoDialog");
+const demoList = $("demoList");
+for (const demo of DEMOS) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "demo-card";
+  const content = document.createElement("span");
+  content.className = "demo-card-content";
+  const title = document.createElement("span");
+  title.className = "demo-card-name";
+  title.textContent = demo.title;
+  const description = document.createElement("span");
+  description.className = "demo-card-detail";
+  description.textContent = demo.description;
+  const tag = document.createElement("span");
+  tag.className = "demo-card-tag";
+  tag.textContent = "LOAD ↗";
+  content.append(title, description);
+  button.append(content, tag);
+  button.addEventListener("click", () => {
+    if (dirty && !confirm("Discard unsaved changes and load " + demo.title + "?")) return;
+    demoDialog.close();
+    // Bundled examples are copies, not file handles or persistent records.
+    setSource(demo.source, demo.filename, null);
+  });
+  demoList.append(button);
+}
+$("demosButton").addEventListener("click", () => demoDialog.showModal());
+$("closeDemoDialog").addEventListener("click", () => demoDialog.close());
+demoDialog.addEventListener("click", event => {
+  if (event.target === demoDialog) demoDialog.close();
+});
 $("saveButton").addEventListener("click", () => saveCode(false));
 $("saveAsButton").addEventListener("click", () => saveCode(true));
 function runCode() {
-  // Keep slider values when rerunning unchanged code, but respect newly edited
-  // defaultParams if the source code itself was changed.
-  build(modelCodeEdited ? null : { ...params }, "run");
-  modelCodeEdited = false;
+  // Every rebuild reads defaultParams from the code currently in the editor.
+  build(null, "run");
 }
 $("runButton").addEventListener("click", runCode);
 $("newButton").addEventListener("click", () => {
   if (dirty && !confirm("Discard unsaved changes and start a new model?")) return;
-  setSource(example, "untitled.js", null);
+  setSource(NEW_MODEL, "untitled.js", null);
 });
 $("stepButton").addEventListener("click", () => {
   if (!built) return;
@@ -373,7 +409,8 @@ $("threeDmButton").addEventListener("click", () => {
   send("export", { format: "3dm" });
 });
 function onSourceEdited() {
-  modelCodeEdited = true;
+  setDirty(true);
+  lastBuildRequest = -1;
   setDirty(true);
   built = false;
   exportsEnabled(false);
@@ -490,4 +527,4 @@ if ("serviceWorker" in navigator) {
       .catch(error => console.warn("Offline support unavailable:", error));
   });
 }
-setSource(example, "untitled.js", null);
+setSource(DEMOS[0].source, DEMOS[0].filename, null);
