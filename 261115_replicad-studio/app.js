@@ -11,6 +11,8 @@ import { DEMOS, NEW_MODEL } from "./examples.js";
 import { parameterEdit } from "./param-source.js";
 
 const $ = id => document.getElementById(id);
+$("appVersion").textContent = "v" + __APP_VERSION__ + " · " + __APP_REVISION__;
+$("appVersion").title = "Version " + __APP_VERSION__ + " · Git commit " + __APP_REVISION__ + " (deployed build)";
 let programmaticEditorUpdate = false;
 const editor = new EditorView({
   state: EditorState.create({
