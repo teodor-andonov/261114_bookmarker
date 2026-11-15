@@ -4,7 +4,7 @@ Standalone browser-only parametric modelling workspace built with vanilla JavaSc
 
 ## Scope
 
-- Open a local `.js` model, edit highlighted JavaScript code with CodeMirror, and press Run to regenerate. New loads a fresh starter file. Load demo opens a picker for two bundled examples: a parametric box and a two-shape Boolean/fillet test.
+- Open a local `.js` model, edit highlighted JavaScript code with CodeMirror, and press Run to regenerate. New loads a fresh starter file. Load demo opens a picker for two bundled examples: a parametric box and a Boolean cut / fillet / union test with an exposed unionParts toggle.
 - Use Replicad's function-style `defaultParams` convention; number, boolean and string properties become UI controls.
 - Changing parameter controls directly edits the matching literal inside the visible `defaultParams` source (preserving other code and comments), then rebuilds automatically after a short debounce. Editing code by typing still requires Run. The source in the editor is always the model's saved state.
 - Save / Save as model source to the file system. If the File System Access API isn't available, use normal file import and browser download.
@@ -40,7 +40,7 @@ The build output is `build/`. Testlab's Pages workflow builds it and publishes t
 ## Verification
 
 - Testlab's GitHub Actions workflow runs `npm install`, `npm test`, `npm run build`, and `.github/scripts/build_site.py`.
-- Browser smoke test to perform: load initial box; adjust slider and confirm that CodeMirror's defaultParams source changes immediately while the camera stays put; load the Boolean/fillet demo and inspect both solids; edit source manually and Run; Fit; Open/Save local JS; download STEP and `.3dm`; import both into Rhino and check exact Breps; confirm filleted demo rejects unsupported 3DM export; revisit offline after loading assets.
+- Browser smoke test to perform: load initial box; adjust slider and confirm that CodeMirror's defaultParams source changes immediately while the camera stays put; load the Boolean/fillet demo; verify it defaults to a fused solid and disable Union parts to inspect the two intersecting bodies; edit source manually and Run; Fit; Open/Save local JS; download STEP and `.3dm`; import both into Rhino and check exact Breps; confirm filleted demo rejects unsupported 3DM export; revisit offline after loading assets.
 - The restricted 3DM exporter is implemented but **not browser/Rhino smoke-tested in this environment**. Do not claim full support for arbitrary Replicad B-reps.
 
 ## Next technical research
@@ -49,7 +49,7 @@ Next: a full OpenCascade B-rep to openNURBS translator that runs in browser/WASM
 
 ## Camera and editor
 
-Camera framing happens once when a new model file is loaded, or when Fit is pressed. Rebuilding from source or parameter edits replaces the geometry but leaves the camera position and orbit target unchanged. CodeMirror provides JavaScript syntax highlighting, line numbers, bracket matching and native undo; the model source is still a normal JS file.
+Camera framing happens once when a new model file is loaded, or when Fit is pressed. Rebuilding from source or parameter edits replaces the geometry but leaves the camera position and orbit target unchanged. Programmatic source updates do not scroll CodeMirror to parameter positions; mobile panel sizing uses stable small-viewport units rather than dynamic viewport height to avoid page jumps. CodeMirror provides JavaScript syntax highlighting, line numbers, bracket matching and native undo; the model source is still a normal JS file.
 
 ## Arena exporter comparison
 
