@@ -39,7 +39,8 @@ test("all bundled demos are executable plain-JS Replicad model sources", () => {
     assert.equal(typeof result.main, "function", demo.id);
     assert.equal(typeof result.defaultParams, "object", demo.id);
     for (const name of Object.keys(result.defaultParams)) {
-      const newValue = result.defaultParams[name] + 1;
+      const original = result.defaultParams[name];
+      const newValue = typeof original === "boolean" ? !original : original + 1;
       assert.ok(parameterEdit(demo.source, name, newValue).source.includes(String(newValue)));
     }
   }
@@ -47,19 +48,21 @@ test("all bundled demos are executable plain-JS Replicad model sources", () => {
   assert.equal(typeof blank.main, "function");
   assert.match(DEMOS[1].source, /\.cut\(cutter\)/);
   assert.match(DEMOS[1].source, /\.fillet\(/);
+  assert.match(DEMOS[1].source, /\.fuse\(block\)/);
   assert.match(DEMOS[1].source, /return \[/);
 });
 
-test("Boolean example builds two separate shapes through expected CAD operations", () => {
-  const log = [];
+test("Boolean example cuts and fillets two intersecting bodies, then fuses them", () => {
+  const operations = [];
   class Shape {
     constructor(kind) { this.kind = kind; }
-    fillet(radius) { assert.ok(radius > 0); log.push("fillet"); return this; }
-    cut(other) { assert.ok(other instanceof Shape); log.push("cut"); return this; }
-    translate() { log.push("translate"); return this; }
+    fillet(radius) { assert.ok(radius > 0); operations.push("fillet"); return this; }
+    cut(other) { assert.ok(other instanceof Shape); operations.push("cut"); return this; }
+    fuse(other) { assert.ok(other instanceof Shape); operations.push("fuse"); return this; }
+    translate() { operations.push("translate"); return this; }
     translateZ() { return this; }
   }
-  const mockReplicad = {
+  const replicad = {
     makeBaseBox() { return new Shape("box"); },
     drawCircle() {
       return {
@@ -70,11 +73,19 @@ test("Boolean example builds two separate shapes through expected CAD operations
   };
   const demo = DEMOS.find(entry => entry.id === "booleans");
   const { main, defaultParams } = new Function("replicad", demo.source +
-    "\nreturn { main, defaultParams };")(mockReplicad);
-  const output = main(mockReplicad, defaultParams);
-  assert.equal(output.length, 2);
-  assert.deepEqual(output.map(item => item.name), ["Drilled plate", "Rounded block"]);
-  assert.ok(output.every(item => item.shape instanceof Shape));
-  assert.ok(log.includes("cut"));
-  assert.equal(log.filter(operation => operation === "fillet").length, 2);
+    "\nreturn { main, defaultParams };")(replicad);
+  assert.equal(defaultParams.unionParts, true);
+  assert.equal(defaultParams.overlap > 0, true);
+
+  const fused = main(replicad, defaultParams);
+  assert.ok(fused instanceof Shape, "default example should return one unioned solid");
+  assert.ok(operations.includes("cut"));
+  assert.ok(operations.includes("fuse"));
+  assert.equal(operations.filter(operation => operation === "fillet").length, 2);
+
+  const beforeUnion = main(replicad, { ...defaultParams, unionParts: false });
+  assert.ok(Array.isArray(beforeUnion));
+  assert.equal(beforeUnion.length, 2);
+  assert.deepEqual(beforeUnion.map(part => part.name), ["Drilled plate", "Rounded block"]);
+  assert.ok(beforeUnion.every(part => part.shape instanceof Shape));
 });
