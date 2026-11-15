@@ -14,7 +14,7 @@
     <header class="topbar">
       <div class="brand"><span class="brand-symbol" aria-hidden="true">L<span class="brand-dot">.</span></span><div class="brand-label"><strong>LINKBOOK</strong><small>PERSONAL LIBRARY</small></div></div>
       <div class="top-actions">
-        <span class="local-label"><span class="local-dot"></span> Local only</span>
+        <span class="local-label"><span class="local-dot"></span> Stored locally</span>
         <button id="importButton" class="button ghost small" type="button" title="Import a JSON backup">Import</button>
         <button id="exportButton" class="button ghost small" type="button" title="Download a JSON backup">Export</button>
         <input id="importFile" type="file" accept="application/json,.json" hidden />
@@ -57,7 +57,7 @@
         <p id="emptyDescription">Paste a URL above to start collecting.</p>
       </div>
     </main>
-    <footer class="footer"><span>LINKBOOK · Prototype 01</span><span>No account · No sync · Back up with Export</span></footer>
+    <footer class="footer"><span>LINKBOOK · v0.2.0-alpha.1 · <span id="buildSha">__LINKBOOK_BUILD_SHA__</span></span><span>No account · No sync · Back up with Export</span></footer>
   </div>
 
   <dialog id="detailDialog" class="detail-dialog">
@@ -81,7 +81,7 @@
           <div class="cover-upload-row"><label class="upload-cover-button" for="coverUpload">Choose image <span>PNG · JPG · WebP</span></label><input id="coverUpload" name="coverUpload" type="file" accept="image/png,image/jpeg,image/webp" hidden /><button id="clearCoverButton" type="button" class="clear-cover-button">Use simple cover</button></div>
           <label>Custom image URL<input name="customCoverUrl" type="url" placeholder="https://..." /></label>
           <details><summary>Original webpage image URL (optional)</summary><label>Extracted image URL<input name="image" type="url" placeholder="https://..." /></label></details>
-          <p class="cover-editor-note">Uploaded images are resized and saved in this browser. No external service is used.</p>
+          <p class="cover-editor-note">Uploaded covers are saved locally. Defuddle receives only URLs requested for metadata.</p>
         </div>
         <label>Tags <span class="helper">(comma separated)</span><input name="tags" type="text" placeholder="Design, Research, References" /></label>
         <label>Notes<textarea name="notes" rows="3" placeholder="Why did you save this?" maxlength="10000"></textarea></label>
