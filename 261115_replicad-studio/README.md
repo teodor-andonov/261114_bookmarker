@@ -1,16 +1,16 @@
 # Replicad Studio — Testlab prototype
 
-Standalone browser-only parametric modelling workspace built with vanilla JavaScript, Replicad/OpenCascade WebAssembly and Three.js.
+Standalone browser-only parametric modelling workspace built with vanilla JavaScript, CodeMirror 6, Replicad/OpenCascade WebAssembly, rhino3dm WebAssembly and Three.js.
 
 ## Scope
 
-- Open a local `.js` model, edit code, and press Run to regenerate.
+- Open a local `.js` model, edit highlighted JavaScript code with CodeMirror, and press Run to regenerate.
 - Use Replicad's function-style `defaultParams` convention; number, boolean and string properties become UI controls.
 - Changing parameter controls rebuilds automatically after a small debounce. Editing code only rebuilds on Run.
 - Save / Save as model source to the file system. If the File System Access API isn't available, use normal file import and browser download.
-- Download STL (mesh) or STEP (exact OpenCascade B-rep). The viewport always shows a tessellation of the exact model.
+- Download STL (mesh), STEP (exact OpenCascade B-rep), or `.3dm` containing exact Rhino B-reps **for strictly verified axis-aligned box solids and complete sphere solids**. The viewport always shows a tessellation of the exact model.
 - Run completely in-browser and cache app assets for offline reuse once downloaded. No server compute, user account, model database or persisted model source.
-- Precise `.3dm` B-rep export remains **unimplemented**. Do not implement a mesh-to-3DM substitute: an arbitrary OpenCascade B-rep requires a face/edge/trim/topology conversion to openNURBS. The rhino3dm.js library can *write* B-reps but is not an OCCT-to-openNURBS translator. STEP can be imported into Rhino meanwhile.
+- **General** OCCT-to-Rhino B-rep conversion remains **unimplemented**. rhino3dm's public JS API does not provide arbitrary OCCT B-rep trim-topology authoring. The 3DM exporter recognises supported primitives by inspecting the real OpenCascade faces and edges and constructs equivalent *exact* Rhino B-reps; it fails clearly for fillets, booleans, trimmed NURBS, and other unsupported solids. No mesh-based substitute. Use STEP for those shapes and import it into Rhino.
 
 ## Model contract
 
@@ -39,9 +39,13 @@ The build output is `build/`. Testlab's Pages workflow builds it and publishes t
 ## Verification
 
 - Testlab's GitHub Actions workflow runs `npm install`, `npm run build`, and `.github/scripts/build_site.py`.
-- Browser smoke test to perform: load initial shape; adjust slider; edit code and Run; orbit and Fit; open/save local JS; download STEP; import STEP into Rhino and check exact B-rep; revisit after first full load offline.
-- Exact 3DM export must not be advertised as implemented until a valid non-mesh B-rep conversion can be demonstrated and checked in Rhino.
+- Browser smoke test to perform: load initial box; adjust slider while orbiting to confirm camera stays put; edit highlighted JS code and Run; Fit; open/save local JS; download STEP and `.3dm`; import both into Rhino and check they are genuine valid closed Breps; test a filleted solid fails 3DM export (no false geometry); revisit after first full load offline.
+- The restricted 3DM exporter is implemented but **not browser/Rhino smoke-tested in this environment**. Do not claim full support for arbitrary Replicad B-reps.
 
 ## Next technical research
 
-Investigate a reliable OpenCascade B-rep to openNURBS translator that runs in browser/WASM, including surface conversion, trims in parameter-space, topology sharing, edge orientations, seam handling, assembly structure and numerical tolerances. Test on booleans and filleted solids, not only boxes/spheres.
+Next: a full OpenCascade B-rep to openNURBS translator that runs in browser/WASM, including NURBS control nets/weights/knots, trimming curves in parameter-space, topology sharing, edge orientations, seam handling, assembly structure and numerical tolerances. Test on booleans and filleted solids, not only boxes/spheres.
+
+## Camera and editor
+
+Camera framing happens once when a new model file is loaded, or when Fit is pressed. Rebuilding from source or parameter edits replaces the geometry but leaves the camera position and orbit target unchanged. CodeMirror provides JavaScript syntax highlighting, line numbers, bracket matching and native undo; the model source is still a normal JS file.
