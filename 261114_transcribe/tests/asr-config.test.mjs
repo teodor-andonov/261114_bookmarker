@@ -72,7 +72,7 @@ test('cache inspector reports known old models without deleting other caches', a
   const other='https://huggingface.co/another-project/model/resolve/main/model.onnx';
   const entries = new Map([
     [TRANSCRIBE_CACHE, ['https://huggingface.co/onnx-community/whisper-tiny.en/resolve/main/config.json']],
-    [OLD_SHARED_CACHE,[base,small,other]], ['testlab-gallery-v2',['https://example.com/other']]]
+    [OLD_SHARED_CACHE,[base,small,other]], ['testlab-gallery-v2',['https://example.com/other']]
   ]);
   let deleted=false;
   const cacheStorage={
