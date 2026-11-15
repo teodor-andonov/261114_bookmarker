@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#181b1e">
+  <meta name="description" content="Replicad Studio — browser-only parametric CAD workspace.">
+  <title>Replicad Studio · Testlab</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="identity">
+        <a class="back" href="../" title="Back to Testlab">← TESTLAB</a>
+        <span class="slash">/</span>
+        <span class="brand">REPLICAD <b>STUDIO</b></span>
+        <span class="revision">ALPHA 01</span>
+      </div>
+      <div class="toolbar" role="toolbar" aria-label="Files and model">
+        <button id="newButton" title="New model">New</button>
+        <button id="openButton" title="Open JavaScript model file">Open</button>
+        <button id="saveButton" title="Save model code">Save</button>
+        <button id="saveAsButton" title="Save model under a new name">Save as</button>
+        <span class="vertical-divider"></span>
+        <button id="runButton" class="primary" title="Rebuild model (Ctrl/⌘ + Enter)">▶ Run</button>
+      </div>
+    </header>
+
+    <div class="info-bar">
+      <div class="filename"><span id="fileName">untitled.js</span><span id="unsaved" title="Unsaved edits" hidden>●</span></div>
+      <div class="status"><span id="statusLight" class="led"></span><span id="statusText" role="status" aria-live="polite">Starting…</span></div>
+      <div class="hint">Browser-only · Files stay yours</div>
+    </div>
+
+    <main class="workspace">
+      <section class="editor-panel" aria-label="Model source code">
+        <div class="panel-head"><span class="section-title">01 / SOURCE</span><span class="panel-caption">JavaScript · Replicad</span></div>
+        <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Replicad JavaScript source code" placeholder="Write a Replicad model…"></textarea>
+        <div class="panel-foot">
+          <span>Use <code>defaultParams</code> to expose controls.</span>
+          <span>Ctrl/⌘ + Enter to run</span>
+        </div>
+      </section>
+
+      <section class="preview-panel" aria-label="3D model viewer">
+        <div class="panel-head">
+          <span class="section-title">02 / VIEWPORT</span>
+          <div class="panel-actions">
+            <button id="fitButton" title="Fit model to viewport">Fit</button>
+            <button id="gridButton" title="Show or hide ground grid" aria-pressed="true">Grid</button>
+            <button id="stepButton" title="Export precise B-rep as STEP" disabled>STEP ↓</button>
+            <button id="stlButton" title="Export tessellated STL" disabled>STL ↓</button>
+            <button id="threeDmButton" title="Exact Rhino 3DM B-rep conversion is not yet implemented" disabled>3DM B-rep ↓</button>
+          </div>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="viewer" aria-label="Interactive 3D model preview"></canvas>
+          <div class="viewport-help">Orbit · drag &nbsp;&nbsp; Pan · right drag &nbsp;&nbsp; Zoom · scroll</div>
+          <div id="viewerPlaceholder" class="viewer-placeholder">Initializing the CAD kernel…</div>
+          <div class="axis-label">Z ↑</div>
+        </div>
+        <div class="parameter-panel">
+          <div class="params-title"><span class="section-title">03 / PARAMETERS</span><span id="paramsNote">From defaultParams</span></div>
+          <div id="params" class="param-list"><p class="empty">Run a model to see exposed parameters.</p></div>
+        </div>
+        <div class="export-note">Precise 3DM B-rep export is a required target, but not yet supported. STEP preserves the exact CAD geometry for Rhino import; no mesh-based 3DM substitute.</div>
+      </section>
+    </main>
+    <footer><span>TESTLAB / EXPERIMENT 03</span><span>Local code · Local computation · No account</span></footer>
+  </div>
+  <input id="openInput" type="file" accept=".js,text/javascript" hidden>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
