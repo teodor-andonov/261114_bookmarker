@@ -1,0 +1,67 @@
+/* Linkbook retains its independent UI; only its palette follows Testlab. */
+:root[data-theme="dark"] {
+  --edge:#38413d; --muted:#a9b6ae; --ink:#e6ede8; --accent:#99b4bd;
+  background:#161c19; color:#e6ede8;
+}
+:root[data-theme="dark"] .topbar,
+:root[data-theme="dark"] .footer {border-color:var(--edge)}
+:root[data-theme="dark"] .brand-label small,
+:root[data-theme="dark"] .intro p,
+:root[data-theme="dark"] .eyebrow,
+:root[data-theme="dark"] .bookmark-meta,
+:root[data-theme="dark"] .description,
+:root[data-theme="dark"] .date-added,
+:root[data-theme="dark"] .detail-help,
+:root[data-theme="dark"] .cover-editor-note {color:#a9b6ae}
+:root[data-theme="dark"] .brand-symbol,
+:root[data-theme="dark"] .tag-filter.selected {background:#dce6df;color:#142119;border-color:#dce6df}
+:root[data-theme="dark"] .title-count,
+:root[data-theme="dark"] .inline-tag {background:#303b35;color:#cbd9cf}
+:root[data-theme="dark"] .add-bar,
+:root[data-theme="dark"] .search,
+:root[data-theme="dark"] .select,
+:root[data-theme="dark"] .view-toggle,
+:root[data-theme="dark"] .bookmark-card,
+:root[data-theme="dark"] .tag-filter,
+:root[data-theme="dark"] .detail-dialog,
+:root[data-theme="dark"] .dialog-fields input,
+:root[data-theme="dark"] .dialog-fields textarea,
+:root[data-theme="dark"] .cover-editor select,
+:root[data-theme="dark"] .clear-cover-button {
+  background:#222b26;color:#e6ede8;border-color:#3e4b42;
+}
+:root[data-theme="dark"] .add-bar input,
+:root[data-theme="dark"] .search input,
+:root[data-theme="dark"] .select {color:#e6ede8}
+:root[data-theme="dark"] input::placeholder,
+:root[data-theme="dark"] textarea::placeholder {color:#92a49b}
+:root[data-theme="dark"] .bookmark-card:hover {box-shadow:0 9px 25px #0007}
+:root[data-theme="dark"] .preview,
+:root[data-theme="dark"] .bookmark-card .preview,
+:root[data-theme="dark"] .preview-art.simple-cover,
+:root[data-theme="dark"] .preview-art {background:#2d3731}
+:root[data-theme="dark"] .simple-cover-domain,
+:root[data-theme="dark"] .simple-cover-title,
+:root[data-theme="dark"] .bookmark-body h3 {color:#e3ece5}
+:root[data-theme="dark"] .simple-cover-favicon-fallback,
+:root[data-theme="dark"] .favicon-fallback {background:#3b4941;border-color:#56685a;color:#e5eee7}
+:root[data-theme="dark"] .bookmark-foot {border-color:#3e4b42}
+:root[data-theme="dark"] .tag-filter.selected {background:#cbd9ce}
+:root[data-theme="dark"] .view-button.active,
+:root[data-theme="dark"] .icon-button,
+:root[data-theme="dark"] .tiny-action {background:#38453d;color:#d5e2d9}
+:root[data-theme="dark"] .view-button:not(.active) {color:#9baea2}
+:root[data-theme="dark"] .button.ghost {background:#26322a;color:#e5ede7;border-color:#3c4d43}
+:root[data-theme="dark"] .button.ghost:hover,
+:root[data-theme="dark"] .tiny-action:hover {background:#405146}
+:root[data-theme="dark"] .button.primary,
+:root[data-theme="dark"] .upload-cover-button {background:#cbd9ce;color:#1c2920;border-color:#cbd9ce}
+:root[data-theme="dark"] .button.primary:hover {background:#e3ebe3}
+:root[data-theme="dark"] .cover-editor {background:#202923;border-color:#3c4d41}
+:root[data-theme="dark"] .cover-editor details {border-color:#3c4d41}
+:root[data-theme="dark"] .cover-editor-head strong,
+:root[data-theme="dark"] .dialog-heading h2,
+:root[data-theme="dark"] .dialog-fields label {color:#e3ece5}
+:root[data-theme="dark"] .detail-dialog::backdrop {background:#000b}
+:root[data-theme="dark"] .empty-state h2 {color:#e3ece5}
+:root[data-theme="dark"] .empty-state {color:#aebeb2}
