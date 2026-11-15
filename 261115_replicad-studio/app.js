@@ -13,7 +13,7 @@ const paramsNote = $("paramsNote");
 const placeholder = $("viewerPlaceholder");
 const worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
 
-const example = \`// Replicad model — dimensions in millimetres.
+const example = `// Replicad model — dimensions in millimetres.
 // Edit the code, then press Run. The controls below rebuild automatically.
 const defaultParams = {
   width: 60,
@@ -29,7 +29,7 @@ const main = (replicad, params) => {
     .sketchOnPlane()
     .extrude(height);
 };
-\`;
+`;
 
 let fileHandle = null;
 let fileName = "untitled.js";
