@@ -15,7 +15,7 @@ PATTERN = re.compile(r"^(\d{6})_([a-z0-9][a-z0-9-]*)$")
 def git_dates(folder):
     """Earliest/latest committed change to this prototype, in ISO-8601."""
     result = subprocess.run(
-        ["git", "log", "--format=%aI", "--", folder],
+        ["git", "log", "--format=%cI", "--", folder],
         cwd=ROOT, capture_output=True, text=True, check=False
     )
     times = [line.strip() for line in result.stdout.splitlines() if line.strip()]
@@ -50,11 +50,13 @@ def inject_shell(index_file, folder_name, has_theme):
       ? preference : (systemDark ? 'dark' : 'light');
 })();
 </script>"""
-    css = '<link rel="stylesheet" href="../prototype-shell.css">'
+    def relative(path):
+        return os.path.relpath(path, index_file.parent).replace(os.sep, "/")
+    css = f'<link rel="stylesheet" href="{relative(OUTPUT / "prototype-shell.css")}">'
     if has_theme:
-        css += '<link rel="stylesheet" href="./testlab-theme.css">'
+        css += f'<link rel="stylesheet" href="{relative(OUTPUT / folder_name / "testlab-theme.css")}">'
     markup = markup.replace("</head>", boot + "\n" + css + "\n</head>", 1)
-    markup = markup.replace("</body>", '<script defer src="../prototype-shell.js"></script>\n</body>', 1)
+    markup = markup.replace("</body>", f'<script defer src="{relative(OUTPUT / "prototype-shell.js")}"></script>\n</body>', 1)
     index_file.write_text(markup, encoding="utf-8")
 
 
@@ -97,7 +99,9 @@ def main():
         app_theme = folder / "testlab-theme.css"
         if app_theme.is_file():
             shutil.copy2(app_theme, target / "testlab-theme.css")
-        inject_shell(target / "index.html", folder.name, app_theme.is_file())
+        for page in target.rglob("*.html"):
+            if "assets" not in page.relative_to(target).parts:
+                inject_shell(page, folder.name, app_theme.is_file())
 
     (OUTPUT / "catalog.json").write_text(
         json.dumps({"projects": projects}, indent=2) + "\n", encoding="utf-8"
