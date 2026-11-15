@@ -1,0 +1,33 @@
+name: Test Linkbook
+on:
+  pull_request:
+    paths:
+      - '261114_linkbook/**'
+      - '.github/scripts/build_site.py'
+      - '.github/workflows/linkbook-tests.yml'
+  push:
+    branches:
+      - 'dev/**'
+    paths:
+      - '261114_linkbook/**'
+      - '.github/scripts/build_site.py'
+      - '.github/workflows/linkbook-tests.yml'
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run Linkbook unit tests
+        run: cd 261114_linkbook && npm test
+      - name: Check JavaScript syntax
+        run: |
+          node --check 261114_linkbook/metadata.js
+          node --check 261114_linkbook/app.js
+      - name: Build Testlab and verify release marker
+        run: |
+          python3 .github/scripts/build_site.py
+          grep -q 'v0.2.0-alpha.1' dist/261114_linkbook/index.html
+          grep -Eq 'id="buildSha">[0-9a-f]{7}<' dist/261114_linkbook/index.html
