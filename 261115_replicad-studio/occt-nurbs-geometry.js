@@ -138,7 +138,9 @@ export function makeNurbsFace(face,rhino,oc) {
     }
     const p=evaluate(u,v);
     if(distance(expected,p)>2e-5)
-      throw new Error("Could not map OpenCascade "+type+" face parameter to Rhino NURBS UV within 0.00002 units");
+      throw new Error("Could not map OpenCascade "+type+" UV "+JSON.stringify(uv)+
+        " to Rhino UV "+JSON.stringify([u,v])+" within tolerance, distance="+distance(expected,p)+
+        " target="+JSON.stringify(expected)+" actual="+JSON.stringify(p));
     return [u,v];
   };
   return {surface,map,domain,type};
@@ -148,7 +150,9 @@ export function makeNurbsEdge(edge,rhino,oc) {
   const start=take(edge.startPoint),end=take(edge.endPoint);
   if(edge.geomType==="LINE")return {curve:new rhino.LineCurve(point3(start),point3(end)),a:start,b:end};
   const info=oc.BRep_Tool.Curve(edge.wrapped);
-  if(!info?.returnValue||!finite([info.First,info.Last]))throw new Error("OCCT edge lacks an exact 3D curve");
+  if(!info?.returnValue||!finite([info.First,info.Last]))throw new Error(
+    "OCCT edge lacks 3D curve ("+edge.geomType+") endpoints "+JSON.stringify([start,end])+
+    " param limits "+JSON.stringify([info?.First,info?.Last]));
   const trimmed=new oc.Geom_TrimmedCurve(info.returnValue,info.First,info.Last);
   const bs=oc.GeomConvert.CurveToBSplineCurve(trimmed);
   if(bs.IsPeriodic())bs.SetNotPeriodic();
