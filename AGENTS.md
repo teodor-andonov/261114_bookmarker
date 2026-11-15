@@ -20,3 +20,10 @@ Independent experiments published as static applications through GitHub Pages. E
 - Commit the completed changes after work. One commit is normally enough; use multiple logical commits for larger work or when connector operations require it.
 - Keep existing experiments and gallery functionality intact.
 - Verify syntax, builds and published deployment when possible; report anything that could not be tested.
+
+## Prototype versions and release reporting
+- Give each independently deployed prototype its own explicit SemVer prerelease, e.g. `v0.2.0-alpha.1`. This is **an app version**, not the Testlab gallery's version. Bump that version for a user-facing feature release (patch for fixes, minor for capabilities, prerelease suffix as needed). Existing prototypes do not need retroactive versions.
+- Show **both** the app's version and its deployed **short Git commit SHA** in that prototype's UI. For Vite-built apps, inject the build SHA from `GITHUB_SHA` (and use a local Git fallback in development). Don't hand-type a SHA in the UI; every deployment must identify its exact source commit.
+- Store the version alongside the prototype's source (e.g. `package.json`) and document where it appears. Never claim a version is live solely because the source commit exists.
+- After commits, tell the user **the version, full/short commit SHA, and direct published URL**, ideally with a `?v=<SHA>` cache-busting query. Verify GitHub Actions/Pages publication status when possible; distinguish committed, CI green, and live deployed.
+- Prefer one release commit for related changes, or logical increments if connector operations require multiple commits. The last release commit and the UI SHA must correspond to the actual deployment being described.
