@@ -20,6 +20,7 @@ const editor = new EditorView({
       history(),
       indentOnInput(),
       bracketMatching(),
+      EditorView.contentAttributes.of({ spellcheck: "false", autocapitalize: "off", autocorrect: "off" }),
       javascript(),
       oneDark,
       keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
@@ -80,6 +81,7 @@ let fileName = "untitled.js";
 let dirty = false;
 let params = {};
 let defaultParams = {};
+let modelCodeEdited = false;
 let built = false;
 let lastBuildRequest = 0;
 let requestIndex = 0;
@@ -115,6 +117,7 @@ function setSource(source, name, handle = null) {
   setName(name);
   setDirty(false);
   built = false;
+  modelCodeEdited = false;
   cameraHasBeenFitted = false;
   exportsEnabled(false);
   build(null, "run");
@@ -343,7 +346,13 @@ $("openInput").addEventListener("change", async event => {
 $("openButton").addEventListener("click", openModel);
 $("saveButton").addEventListener("click", () => saveCode(false));
 $("saveAsButton").addEventListener("click", () => saveCode(true));
-$("runButton").addEventListener("click", () => build(null, "run"));
+function runCode() {
+  // Keep slider values when rerunning unchanged code, but respect newly edited
+  // defaultParams if the source code itself was changed.
+  build(modelCodeEdited ? null : { ...params }, "run");
+  modelCodeEdited = false;
+}
+$("runButton").addEventListener("click", runCode);
 $("newButton").addEventListener("click", () => {
   if (dirty && !confirm("Discard unsaved changes and start a new model?")) return;
   setSource(example, "untitled.js", null);
@@ -364,6 +373,7 @@ $("threeDmButton").addEventListener("click", () => {
   send("export", { format: "3dm" });
 });
 function onSourceEdited() {
+  modelCodeEdited = true;
   setDirty(true);
   built = false;
   exportsEnabled(false);
@@ -376,7 +386,7 @@ window.addEventListener("keydown", event => {
     saveCode(false);
   } else if (event.key === "Enter") {
     event.preventDefault();
-    build(null, "run");
+    runCode();
   }
 });
 window.addEventListener("beforeunload", event => {
