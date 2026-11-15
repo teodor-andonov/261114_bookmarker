@@ -109,9 +109,19 @@ export function convertExactPlanarBrep(shape, rhino) {
       const faceIndex = brep.faces.count - 1;
       const wires = face.wires;
       try {
+        // OCCT's topology explorer does not guarantee outer-wire-first
+        // order (e.g. the top face of a drilled plate can list its hole first).
+        // Ask OpenCascade which wire actually bounds the outside.
+        const outer = face.clone().outerWire();
+        try {
+          const index = wires.findIndex(wire => wire.isSame(outer));
+          if (index < 0) throw new Error("Cannot identify OpenCascade face outer wire");
+          if (index !== 0) wires.unshift(wires.splice(index, 1)[0]);
+        } finally {
+          outer.delete();
+        }
         for (let wireIndex = 0; wireIndex < wires.length; wireIndex++) {
-          // First wire should be the outer loop on simple solids; search for
-          // the actual OpenCascade outer wire rather than infer when present.
+          // The outer wire has been moved to index 0; later wires are holes.
           const wire = wires[wireIndex];
           // addOuterLoop() creates an automatic rectangular boundary,
           // which would duplicate our exact OCCT trims. Instead attach an
