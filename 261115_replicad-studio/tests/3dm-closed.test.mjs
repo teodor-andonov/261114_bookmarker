@@ -18,6 +18,18 @@ test("OCCT six-face box converts into ONE valid CLOSED Rhino NURBS Brep", {timeo
     vertices:brep.vertices.count, loops:brep.loops.count,
     trims:brep.trims.count, solid:brep.isSolid,
     validTopology:brep.isValidTopology(), validGeometry:brep.isValidGeometry()});
+  // Check physical dimensions, not merely topology. Replicad face sampling
+  // must use normalized [0,1] parameters, otherwise the Brep can be closed
+  // yet geometrically the wrong size.
+  const bbox = shape.boundingBox;
+  const [sourceMin, sourceMax] = bbox.bounds;
+  bbox.delete();
+  const locations = Array.from({length:brep.vertices.count},(_,i)=>brep.vertices.get(i).location);
+  for(const [axis,key] of ["X","Y","Z"].entries()){
+    const coordinate=locations.map(p=>p[key]);
+    assert.ok(Math.abs(Math.min(...coordinate)-sourceMin[axis])<1e-5,key+" min changed");
+    assert.ok(Math.abs(Math.max(...coordinate)-sourceMax[axis])<1e-5,key+" max changed");
+  }
   assert.equal(brep.faces.count, 6);
   assert.equal(brep.edges.count, 12);
   assert.equal(brep.vertices.count, 8);
