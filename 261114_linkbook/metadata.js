@@ -1,4 +1,4 @@
-// No proxy or private backend: direct browser requests only. Most external HTML is blocked by CORS.
+// Local-first storage. Metadata is optionally fetched from Defuddle's public hosted API.
 const HTTP = new Set(['http:', 'https:']);
 
 export function normalizeUrl(raw) {
