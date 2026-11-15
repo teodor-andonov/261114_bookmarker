@@ -159,7 +159,6 @@ export function convertGeneralNurbsBrep(shape,rhino,oc) {
 
   for(let fi=0;fi<faces.length;fi++){
     const face=faces[fi];
-    console.log("3DM general: processing face",fi+1,"/",faces.length,face.geomType);
     const data=makeNurbsFace(face,rhino,oc);
     resources.push(data.surface);
     const si=brep.addSurface(data.surface);
