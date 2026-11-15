@@ -26,11 +26,14 @@ function orderedWireInUV(edges,face,oc) {
   });
   // On a periodic surface, 3D seam points can coincide at *different*
   // UV parameters. Link loops in native 2D UV, not by 3D vertex positions.
+  let searchVisits=0;
   const makeOrder=(first,flip)=>{
     const initial=pending[first],start=flip?initial.b:initial.a;
     const result=[{...initial,reverse:flip}];
     const unused=new Set(pending.map((_,i)=>i));unused.delete(first);
     const search=(end)=>{
+      // Avoid exponential ambiguity for a malformed or multi-seam wire.
+      if(++searchVisits>25000)return false;
       if(!unused.size)return near(end,start);
       for(const i of unused){
         const e=pending[i];
@@ -123,7 +126,9 @@ export function convertGeneralNurbsBrep(shape,rhino,oc) {
   }
 
   for(let fi=0;fi<faces.length;fi++){
-    const face=faces[fi],data=makeNurbsFace(face,rhino,oc);
+    const face=faces[fi];
+    console.log("3DM general: processing face",fi+1,"/",faces.length,face.geomType);
+    const data=makeNurbsFace(face,rhino,oc);
     resources.push(data.surface);
     const si=brep.addSurface(data.surface);
     if(si<0)throw Error("Could not add Rhino NURBS face surface");
