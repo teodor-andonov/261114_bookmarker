@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / "dist"
-PATTERN = re.compile(r"^(\\d{6})_([a-z0-9][a-z0-9-]*)$")
+PATTERN = re.compile(r"^(\d{6})_([a-z0-9][a-z0-9-]*)$")
 
 
 def git_dates(folder):
