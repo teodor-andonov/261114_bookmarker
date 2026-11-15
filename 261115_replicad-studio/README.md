@@ -8,9 +8,9 @@ Standalone browser-only parametric modelling workspace built with vanilla JavaSc
 - Use Replicad's function-style `defaultParams` convention; number, boolean and string properties become UI controls.
 - Changing parameter controls directly edits the matching literal inside the visible `defaultParams` source (preserving other code and comments), then rebuilds automatically after a short debounce. Editing code by typing still requires Run. The source in the editor is always the model's saved state.
 - Save / Save as model source to the file system. If the File System Access API isn't available, use normal file import and browser download.
-- Download STL (mesh), STEP (exact OpenCascade B-rep), or `.3dm` containing exact Rhino B-reps **for strictly verified axis-aligned box solids and complete sphere solids**. The viewport always shows a tessellation of the exact model.
+- Download STL (mesh), STEP (exact OpenCascade B-rep), or `.3dm` containing exact Rhino B-reps for **planar-faced solids with straight edges** (including boolean cuts and unions) and **complete spheres**. The viewport always shows a tessellation of the exact model.
 - Run completely in-browser and cache app assets for offline reuse once downloaded. No server compute, user account, model database or persisted model source.
-- **General** OCCT-to-Rhino B-rep conversion remains **unimplemented in the live exporter**. The existing production writer uses rhino3dm 8.35 and recognises only supported exact primitives, not fillets, booleans or other trimmed solids. Import STEP into Rhino for those. **New:** rhino3dm 9.2 beta *does* expose JS Brep face/edge/trim topology builders; an isolated 3DM NURBS round-trip is now verified by CI (see below). No mesh substitute is used.
+- **Curved and filleted B-reps are not yet supported in 3DM.** The live worker now tries the verified `rhino3dm 9.2 beta` shared-topology planar translator first; if the geometry is non-planar, it falls back to the existing exact 8.35 primitive writer (such as a full sphere). Unsupported shapes fail clearly. STEP remains the exact export route for the complex filleted Boolean demo. No mesh substitute.
 
 ## Model contract
 
@@ -39,9 +39,9 @@ The build output is `build/`. Testlab's Pages workflow builds it and publishes t
 
 ## Verification
 
-- Testlab's GitHub Actions workflow runs `npm install`, `npm test`, `npm run build`, and `.github/scripts/build_site.py`.
-- Browser smoke test to perform: load initial box; adjust slider and confirm that CodeMirror's defaultParams source changes immediately while the camera stays put; load the Boolean/fillet demo; verify it defaults to a fused solid and disable Union parts to inspect the two intersecting bodies; edit source manually and Run; Fit; Open/Save local JS; download STEP and `.3dm`; import both into Rhino and check exact Breps; confirm filleted demo rejects unsupported 3DM export; revisit offline after loading assets.
-- The restricted 3DM exporter is implemented but **not browser/Rhino smoke-tested in this environment**. Do not claim full support for arbitrary Replicad B-reps.
+- Testlab's GitHub Actions workflow runs `npm install`, `npm test` (including actual OCCT-to-3DM closed-solid/Boolean round-trips), `npm run test:cad`, `npm run build`, and `.github/scripts/build_site.py`.
+- Browser smoke test to perform: confirm version/SHA in header, load initial box and export `.3dm`; import into Rhino and verify closed B-rep and mm units; try a script with a planar Boolean through-hole and union; confirm the curved/filleted demo still reports unsupported 3DM and works via STEP. Also test slider/code synchronization, camera stability and offline reuse.
+- Rhino 3DM round-trips are verified in Node + real OCCT/rhino3dm WASM by CI. The compiled browser worker was built successfully, but Rhino desktop and a live browser have **not** yet been smoke-tested in this environment.
 
 ## Exact 3DM research — rhino3dm 9.2 beta (15 Nov 2026)
 
@@ -53,13 +53,13 @@ The build output is `build/`. Testlab's Pages workflow builds it and publishes t
 - **Actual first geometry round-trip:** sample one planar Replicad/OpenCascade box face, reconstruct its exact bounded bilinear NURBS surface in Rhino geometry, create a one-face Brep with four trim edges, save a `.3dm`, reopen it with rhino3dm beta, verify the imported Brep and topology. Automated by `tests/3dm-write.test.mjs`, run in normal `npm test`.
 - OCCT bindings have `BRep_Tool.CurveOnSurface(E, F, ...)` returning the face's 2D trim curve with parameter limits, plus `GeomConvert` / `Geom2dConvert` and BSpline pole/knot/weight readers. Signatures inspected from the *installed* `replicad_single.d.ts`.
 
-**Not yet proved:** a joined **closed** polysurface converted from an arbitrary OCCT model. A single valid Brep *face* is not a solid. The conversion must preserve shared vertices/edges, ordered trim loops and UV curves, face reversal, seams, singularities, tolerances, and ideally validate `isSolid`, topology, geometry and save/reload.
+**Newly implemented and proved (v0.3.0-alpha.1):** `occt-to-rhino.js` maps planar OCCT faces and straight shared edges to precise native Rhino NURBS surfaces, shared vertices/edges, explicit outer/inner UV trim loops, orientations and tolerances. `rhino-planar-core.js` validates and round-trips these B-reps into `.3dm` with millimetre document units. CI proves a closed 6-face box, a planar Boolean through-hole with inner loops, a planar Boolean union, and a two-solid assembly. `rhino-planar-export.js` lazy-loads the beta's browser WASM for actual 3DM export. **Not yet supported:** NURBS curves/surfaces of general curvature, analytic cylinders/toruses and fillet patches, periodic seams, singularities and truly arbitrary OCCT B-reps.
 
 **Specific OCCT constraint:** `GeomConvert.SurfaceToBSplineSurface` rejects unbounded analytic planes/cylinders. When translating an individual bounded face, first respect its actual `UVBounds`. Rectangular surface trimming is not exposed in Replicad's current custom OCCT build; either generate exact bounded analytic NURBS patches from the face parameters or extend that custom build with the needed trim operation. Do not replace the surfaces with sampled display meshes.
 
-**Next implementation milestone:** create a general `occt-to-rhino` converter in the CAD worker, validate a plain box as a **closed** native Brep, then a drilled box, then the existing post-union-fillet demo. Only enable the beta-backed general 3DM export button when a closed solid round-trips and passes validity checks.
+**Next milestone:** extend the existing exact translator to curved NURBS faces and 3D/2D B-spline edge curves, preserving original OCCT face UV parameterization, periodic seams and singularities; validate the filleted Boolean demo as a closed Brep. Do not approximate NURBS by sampled display meshes.
 
-**Development commands:** `npm test` runs the exact single-face 3DM round-trip and existing CAD/demo tests. `npm run probe:3dm` is a verbose, manually invoked API/type investigation; it is intentionally excluded from routine deployment builds.
+**Development commands:** `npm test` runs exact OCCT 3DM face, closed-solid, planar Boolean and browser-ESM round-trip tests. `npm run test:cad` checks the filleted CAD example; `npm run probe:3dm` is a verbose API/type investigation excluded from normal deployment.
 
 ## Camera and editor
 
@@ -68,3 +68,10 @@ Camera framing happens once when a new model file is loaded, or when Fit is pres
 ## Arena exporter comparison
 
 Arena's `data/cad/arena/export.py` writes exact OCCT shapes to STEP/BREP. Its `.3dm` path currently writes Rhino meshes for four-corner panels and polyline curves for edges—not NURBS/B-rep solids. This does not establish a general OCCT→openNURBS solid converter. Studio's precise 3DM export remains intentionally restricted rather than approximating unsupported solids.
+
+## Versioning and release identification
+
+- Version source: `package.json#version`. Current version: **v0.3.0-alpha.1**.
+- The topbar shows `v<version> · <7-char Git SHA>`; Vite injects the real `GITHUB_SHA` at GitHub Pages build time and reads local Git HEAD for development builds.
+- Root `/AGENTS.md` applies the same version/revision reporting convention to future prototypes, without modifying other existing prototypes.
+- Every release should report its actual commit and verify GitHub Pages deployment. A new commit is not necessarily the version currently served from the website.
