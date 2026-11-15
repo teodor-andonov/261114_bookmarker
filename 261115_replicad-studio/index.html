@@ -52,7 +52,7 @@
             <button id="gridButton" title="Show or hide ground grid" aria-pressed="true">Grid</button>
             <button id="stepButton" title="Export precise B-rep as STEP" disabled>STEP ↓</button>
             <button id="stlButton" title="Export tessellated STL" disabled>STL ↓</button>
-            <button id="threeDmButton" title="Exact 3DM export for axis-aligned boxes and complete spheres; other B-reps require the general converter" disabled>3DM B-rep ↓</button>
+            <button id="threeDmButton" title="Exact 3DM B-rep export: planar solids including Boolean cuts and unions; complete spheres; curved fillets are not yet supported" disabled>3DM B-rep ↓</button>
           </div>
         </div>
         <div class="canvas-wrap">
@@ -65,7 +65,7 @@
           <div class="params-title"><span class="section-title">03 / PARAMETERS</span><span id="paramsNote">From defaultParams</span></div>
           <div id="params" class="param-list"><p class="empty">Run a model to see exposed parameters.</p></div>
         </div>
-        <div class="export-note">3DM export writes real Rhino B-reps for verified axis-aligned boxes and full spheres. Complex / trimmed B-reps are not yet supported: use STEP to preserve exact geometry in Rhino. No mesh-to-3DM substitution.</div>
+        <div class="export-note">3DM exports exact closed Rhino B-reps for planar solids (including Boolean unions and holes) and full spheres. Curved surfaces and filleted solids still require STEP. No mesh substitution.</div>
       </section>
     </main>
     <footer><span>TESTLAB / EXPERIMENT 03</span><span>Local code · Local computation · No account</span></footer>
