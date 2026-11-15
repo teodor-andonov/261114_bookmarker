@@ -16,13 +16,13 @@ const signedArea=points=>points.reduce((sum,p,i)=>{
  const q=points[(i+1)%points.length];return sum+p[0]*q[1]-q[0]*p[1];
 },0)*.5;
 
-function orderedWireInUV(edges,face,oc) {
+function orderedWireInUV(edges,face,oc,faceData) {
   const pending=edges.map(edge=>{
     const adaptor=new oc.BRepAdaptor_Curve2d(edge.wrapped,face.wrapped);
     const from=adaptor.FirstParameter(),to=adaptor.LastParameter();
     if(!Number.isFinite(from)||!Number.isFinite(to)||to<=from)
       throw new Error("Invalid OpenCascade face trimming curve interval");
-    return {edge,adaptor,from,to,a:uvAt(adaptor,from),b:uvAt(adaptor,to)};
+    return {edge,adaptor,from,to,a:uvAt(adaptor,from),b:uvAt(adaptor,to),shift:[0,0]};
   });
   // On a periodic surface, 3D seam points can coincide at *different*
   // UV parameters. Link loops in native 2D UV, not by 3D vertex positions.
@@ -51,11 +51,40 @@ function orderedWireInUV(edges,face,oc) {
     };
     return search(flip?initial.a:initial.b)?result:null;
   };
-  for(let i=0;i<pending.length;i++)for(const reversed of [false,true]){
-    const order=makeOrder(i,reversed);
-    if(order)return order;
+  const findOrder=()=>{
+    searchVisits=0;
+    for(let i=0;i<pending.length;i++)for(const reversed of [false,true]){
+      const order=makeOrder(i,reversed);
+      if(order)return order;
+    }
+    return null;
+  };
+  const simpleOrder=findOrder();
+  if(simpleOrder)return simpleOrder;
+
+  // TopoDS edge exploration is unique: a periodic seam edge occurring
+  // twice in a *wire* only appears once. Rhino needs two UV trims sharing
+  // that ONE 3D edge. Duplicate its pcurve at the opposite period boundary.
+  for(let axis=0;axis<2;axis++){
+    const period=faceData.periods[axis];
+    const min=axis?faceData.bounds.vMin:faceData.bounds.uMin;
+    const max=axis?faceData.bounds.vMax:faceData.bounds.uMax;
+    if(!period||Math.abs(max-min-period)>1e-5)continue;
+    const originals=[...pending];
+    for(const item of originals){
+      if(Math.abs(item.a[axis]-item.b[axis])>1e-6)continue;
+      const atMin=Math.abs(item.a[axis]-min)<1e-5;
+      const atMax=Math.abs(item.a[axis]-max)<1e-5;
+      if(!atMin&&!atMax)continue;
+      const delta=atMin?period:-period;
+      const shift=[...item.shift];shift[axis]+=delta;
+      const move=p=>p.map((x,i)=>x+(i===axis?delta:0));
+      pending.push({...item,shift,a:move(item.a),b:move(item.b)});
+    }
   }
-  pending.forEach(e=>e.adaptor.delete?.());
+  const periodicOrder=findOrder();
+  if(periodicOrder)return periodicOrder;
+  [...new Set(pending.map(e=>e.adaptor))].forEach(a=>a.delete?.());
   throw new Error("OpenCascade "+face.geomType+" face wire has disconnected UV trim curves: "+JSON.stringify(
     pending.map(p=>({type:p.edge.geomType,hash:p.edge.hashCode,
       a:p.a,b:p.b,edgeStart:p.edge.startPoint.toTuple(),edgeEnd:p.edge.endPoint.toTuple()}))));
@@ -64,7 +93,8 @@ function orderedWireInUV(edges,face,oc) {
 function buildTrim(item,face,faceData,rhino) {
   const {adaptor,from,to}=item,kind=adaptor.GetType();
   let curve,points;
-  const uvMap=t=>faceData.map(uvAt(adaptor,t));
+  const sourceUv=t=>uvAt(adaptor,t).map((x,i)=>x+(item.shift?.[i]||0));
+  const uvMap=t=>faceData.map(sourceUv(t));
   if(faceData.type==="PLANE"&&kind==="GeomAbs_Circle"){
     const b=face.UVBounds;
     const affine=([u,v])=>[(u-b.uMin)/(b.uMax-b.uMin),(v-b.vMin)/(b.vMax-b.vMin)];
@@ -75,7 +105,7 @@ function buildTrim(item,face,faceData,rhino) {
     points=[uvMap(from),uvMap(to)];
     curve=new rhino.LineCurve(point3([...points[0],0]),point3([...points[1],0]));
   }else{
-    ({curve,points}=sampleTrim(adaptor,faceData,face,rhino));
+    ({curve,points}=sampleTrim(adaptor,faceData,face,rhino,{offset:item.shift}));
   }
   if(item.reverse){
     if(!curve.reverse())throw new Error("Could not reverse Rhino UV trim curve");
@@ -150,7 +180,7 @@ export function convertGeneralNurbsBrep(shape,rhino,oc) {
         const wireEdges=wires[wi].edges;
         let entries=[];
         try{
-          entries=orderedWireInUV(wireEdges,face,oc);
+          entries=orderedWireInUV(wireEdges,face,oc,data);
           const curves=entries.map(e=>buildTrim(e,face,data,rhino));
           curves.forEach(c=>resources.push(c.curve));
           let areaPoints=curves.flatMap(c=>c.points.slice(0,-1));
