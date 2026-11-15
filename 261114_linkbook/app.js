@@ -3,6 +3,8 @@ import { normalizeUrl, safeImageUrl, fallbackMetadata, getMetadata, urlFromShare
 import { coverIdentity, coverImage, isLocalCover } from './cover.js';
 
 const $ = id => document.getElementById(id);
+// Direct local preview has no deployment SHA; GitHub Actions replaces the marker.
+if ($('buildSha')?.textContent?.startsWith('__')) $('buildSha').textContent = 'dev';
 const els = {
   addForm: $('addForm'), url: $('urlInput'), addButton: $('addButton'), message: $('message'),
   count: $('totalCount'), search: $('searchInput'), sort: $('sortSelect'), tags: $('tagFilters'),
@@ -173,8 +175,8 @@ function fillEditor(bookmark) {
   formControl('customCoverUrl').value = bookmark.customCoverUrl || '';
   els.coverUpload.value = '';
   els.metadataStatus.textContent = bookmark.metadataSource === 'basic'
-    ? 'Most pages block browser metadata requests. Simple covers work for every link; custom images stay only in this browser.'
-    : `Metadata source: ${bookmark.metadataSource === 'github-api' ? 'GitHub public API' : 'page HTML'}. Custom covers survive metadata refresh.`;
+    ? 'No metadata fetched yet. Linkbook uses Defuddle for optional metadata and saves your links locally.'
+    : `Metadata source: ${bookmark.metadataSource === 'defuddle-api' ? 'Defuddle hosted API' : 'previous source'}. Custom covers survive metadata refresh.`;
   updateCoverPreview();
 }
 
@@ -305,17 +307,17 @@ els.refreshButton.addEventListener('click', async () => {
   const id = state.selectedId;
   if (!id) return;
   els.refreshButton.disabled = true;
-  els.metadataStatus.textContent = 'Trying direct browser access…';
+  els.metadataStatus.textContent = 'Fetching metadata via Defuddle…';
   try {
     const current = await getBookmark(id);
     if (!current) return;
     const result = await getMetadata(current.url);
     if (result.metadataSource === 'basic') {
-      els.metadataStatus.textContent = 'No additional metadata available (often due to website CORS restrictions).';
+      els.metadataStatus.textContent = 'Defuddle could not provide metadata (page unavailable, blocked or API limit reached).';
       return;
     }
     // The refresh button deliberately re-fetches page fields, retaining local notes/tags.
-    const updated = { ...current, ...result, updatedAt: new Date().toISOString() };
+    const updated = { ...current, ...result, image: result.image || current.image || '', favicon: current.favicon || result.favicon, updatedAt: new Date().toISOString() };
     await saveBookmark(updated); fillEditor(updated); await reload();
     notify('Metadata refreshed.', 'success');
   } catch (error) { els.metadataStatus.textContent = error.message; }
@@ -358,7 +360,7 @@ els.importFile.addEventListener('change', async () => {
           customCoverUrl: safeImageUrl(raw.customCoverUrl, url), favicon: safeImageUrl(raw.favicon, url) || basic.favicon,
           siteName: String(raw.siteName || basic.siteName).slice(0,200), author: String(raw.author || '').slice(0,300),
           published: parsePublicationDate(raw.published),
-          metadataSource: ['basic', 'page', 'github-api'].includes(raw.metadataSource) ? raw.metadataSource : 'basic',
+          metadataSource: ['basic', 'page', 'github-api', 'defuddle-api'].includes(raw.metadataSource) ? raw.metadataSource : 'basic',
           notes: String(raw.notes || '').slice(0,10000),
           tags: Array.isArray(raw.tags) ? [...new Set(raw.tags.filter(x => typeof x === 'string').map(x => x.trim()).filter(Boolean))].slice(0,30) : [],
           source: 'import', createdAt: !Number.isNaN(Date.parse(raw.createdAt)) ? raw.createdAt : new Date().toISOString(),

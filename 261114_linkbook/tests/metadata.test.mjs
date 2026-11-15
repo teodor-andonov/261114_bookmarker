@@ -28,3 +28,50 @@ test('guesses a readable title, never claims missing publication data', () => {
   assert.equal(guessTitle('https://example.com/posts/hello-world'), 'hello world');
   assert.equal(fallbackMetadata('https://example.com/').published, '');
 });
+
+
+test('reads Defuddle frontmatter and ignores the Markdown body', async () => {
+  const { parseDefuddleFrontmatter } = await import('../metadata.js');
+  const data = parseDefuddleFrontmatter('---\ntitle: "Design: \\"New\\" ideas"\ndomain: "example.org"\nsite: "Example Magazine"\nauthor: "Jane Doe"\npublished: 2026-11-15\ndescription: "An introduction."\n---\n\n# Article\n\ncontent');
+  assert.equal(data.title, 'Design: "New" ideas');
+  assert.equal(data.domain, 'example.org');
+  assert.equal(data.site, 'Example Magazine');
+  assert.equal(data.published, '2026-11-15');
+  assert.equal(data.content, undefined);
+  assert.equal(parseDefuddleFrontmatter('No YAML here'), null);
+});
+
+test('one hosted request enriches title, description, author and site but keeps favicon fallback', async () => {
+  const { getMetadata } = await import('../metadata.js');
+  const previous = globalThis.fetch;
+  const calls = [];
+  try {
+    globalThis.fetch = async (url, options) => {
+      calls.push({ url, options });
+      return new Response('---\ntitle: "Actual Article Title"\ndomain: "example.org"\nsite: "Example Magazine"\nauthor: "Jane Doe"\npublished: 2026-11-15\ndescription: "Useful article"\n---\n\nFull text');
+    };
+    const data = await getMetadata('https://example.org/news/article');
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, 'https://defuddle.md/https://example.org/news/article');
+    assert.equal(calls[0].options.credentials, 'omit');
+    assert.equal(data.title, 'Actual Article Title');
+    assert.equal(data.description, 'Useful article');
+    assert.equal(data.author, 'Jane Doe');
+    assert.equal(data.published, '2026-11-15');
+    assert.equal(data.siteName, 'Example Magazine');
+    assert.equal(data.favicon, 'https://example.org/favicon.ico');
+    assert.equal(data.image, '');
+    assert.equal(data.metadataSource, 'defuddle-api');
+  } finally { globalThis.fetch = previous; }
+});
+
+test('a failed Defuddle API call preserves usable metadata with one request', async () => {
+  const { getMetadata } = await import('../metadata.js');
+  const previous = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => new Response('rate limited', { status: 429 });
+    const fallback = await getMetadata('https://example.org/hello-world');
+    assert.equal(fallback.title, 'hello world');
+    assert.equal(fallback.metadataSource, 'basic');
+  } finally { globalThis.fetch = previous; }
+});
