@@ -235,7 +235,11 @@ export function sampleTrim(adaptor,faceData,face,rhino,{tolerance=5e-5,maxDepth=
     const original=sourcePoint(mid);
     const error=distance([point.X,point.Y,point.Z],original);
     if(error<tolerance)return [p1];
-    if(depth>=maxDepth)throw new Error("2D NURBS trimming curve exceeds conversion tolerance");
+    if(depth>=maxDepth)throw new Error("2D NURBS trim "+faceData.type+
+      " exceeds tolerance, source parameters "+JSON.stringify([t0,t1])+
+      " UV endpoints "+JSON.stringify([p0,p1])+" midpoint "+JSON.stringify(pm)+
+      " midpoint error="+error+" original="+JSON.stringify(original)+
+      " reconstructed="+JSON.stringify([point.X,point.Y,point.Z]));
     return [...sample(t0,p0,mid,pm,depth+1),...sample(mid,pm,t1,p1,depth+1)];
   };
   const p0=mapped(first),p1=mapped(last);
