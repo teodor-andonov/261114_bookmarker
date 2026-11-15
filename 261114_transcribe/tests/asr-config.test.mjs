@@ -35,3 +35,13 @@ test('long clips use smaller overlaps and mild repetition control', () => {
 test('empty audio is rejected', () => {
   assert.throws(() => asrOptions(0), /no samples/);
 });
+
+test('English model picker matches engine keys and provides model hint', async () => {
+  const { readFileSync } = await import('node:fs');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const picker = html.split('id="modelSelect">')[1]?.split('</select>')[0] || '';
+  const optionValues = [...picker.matchAll(/<option value="([^"]+)"/g)].map(x => x[1]);
+  assert.deepEqual(optionValues, Object.keys(ENGLISH_MODELS));
+  assert.match(html, /id="modelHint"/);
+  assert.doesNotMatch(html, /id="languageSelect"|Whisper Tiny · Multilingual|WHISPER TINY/);
+});

@@ -20,7 +20,7 @@
       <section class="hero">
         <div class="kicker">EXPERIMENT 02 <span>—</span> BROWSER AI</div>
         <h1>Audio <span class="arrow">→</span> Text<span class="period">.</span></h1>
-        <p>Drop a recording, run Whisper locally, and take the words with you. No account. No transcription server.</p>
+        <p>Drop an English recording, run Whisper locally, and take the words with you. No account. No transcription server.</p>
       </section>
       <div class="workspace">
         <section class="panel input-panel" aria-labelledby="source-heading">
@@ -43,10 +43,10 @@
           <div class="divider"></div>
           <div class="section-title settings-head"><span class="section-index">02</span><h2>Recognition settings</h2></div>
           <div class="setting-grid">
-            <label class="setting"><span>Model</span><select id="modelSelect"><option value="multilingual">Whisper Tiny · Multilingual</option><option value="english">Whisper Tiny · English only</option></select></label>
-            <label class="setting"><span>Spoken language</span><select id="languageSelect"><option value="auto">Auto-detect</option><option value="english">English</option><option value="bulgarian">Bulgarian</option><option value="spanish">Spanish</option><option value="french">French</option><option value="german">German</option><option value="italian">Italian</option><option value="portuguese">Portuguese</option></select></label>
-            <label class="setting full"><span>Processing</span><select id="deviceSelect"><option value="wasm">CPU · Most compatible</option><option value="webgpu">GPU · Experimental, when supported</option></select></label>
+            <label class="setting"><span>English speech model</span><select id="modelSelect"><option value="base" selected>Whisper Base · English (recommended)</option><option value="small">Whisper Small · English (higher accuracy)</option></select></label>
+            <label class="setting"><span>Processing</span><select id="deviceSelect"><option value="wasm">CPU · Most compatible</option><option value="webgpu">GPU · Experimental, when supported</option></select></label>
           </div>
+          <p id="modelHint" class="model-hint">Base English: better accuracy than Tiny, with a reasonable download and memory footprint.</p>
           <button id="transcribeButton" class="primary-button" type="button" disabled><span id="transcribeLabel">Transcribe audio</span><span aria-hidden="true">↗</span></button>
           <button id="cancelButton" class="cancel-button" type="button" hidden>Cancel transcription</button>
           <div class="process-status" aria-live="polite"><div class="status-line"><span id="statusText">Choose a file to begin</span><span id="statusPercent"></span></div><div class="progress-track"><span id="progressFill"></span></div></div>
@@ -61,7 +61,7 @@
           <p class="output-note">Text is editable. SRT uses the original timed segments, not edits made above. Export before closing: transcripts are not stored.</p>
         </section>
       </div>
-      <section class="bottom-bar"><span>WHISPER TINY / TRANSFORMERS.JS</span><span>LOCALLY PROCESSED AUDIO · GITHUB PAGES</span></section>
+      <section class="bottom-bar"><span>WHISPER ENGLISH / TRANSFORMERS.JS</span><span>LOCALLY PROCESSED AUDIO · GITHUB PAGES</span></section>
     </main>
   </div>
   <script type="module" src="./app.js"></script>

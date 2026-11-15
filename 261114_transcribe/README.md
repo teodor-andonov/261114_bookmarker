@@ -1,6 +1,6 @@
 # Audio → Text — Testlab prototype 02
 
-Standalone browser-based speech transcription using Transformers.js and `onnx-community/whisper-tiny` (multilingual) or `onnx-community/whisper-tiny.en` (English-only). This prototype is an ordinary web app, **not a PWA**. It does not register a service worker, manifest, or backend.
+Standalone browser-based speech transcription using Transformers.js and either `onnx-community/whisper-base.en` (default) or `onnx-community/whisper-small.en` (higher accuracy on capable hardware). This prototype is an ordinary web app, **not a PWA**. It does not register a service worker, manifest, or backend.
 
 ## What it does
 
@@ -28,7 +28,7 @@ Then visit `http://localhost:4173/`.
 
 ## Known constraints
 
-- **Experimental**: small Whisper models are fast and lightweight but may make mistakes, especially with accents, technical vocabulary and noise.
+- **Experimental**: English-only Whisper Base and Small can still make errors, especially with accents, technical vocabulary and noise. Small can be too slow or memory-intensive on a phone.
 - Long recordings are resource intensive in browsers. This prototype limits clips to 15 minutes, and short clips are recommended on phones.
 - The first download may involve tens to hundreds of MB, depending on model/device and cached files. Processing speed depends on hardware.
 - File compatibility depends on the browser's audio codecs; not every audio file can be decoded even if the extension is listed.
@@ -36,4 +36,8 @@ Then visit `http://localhost:4173/`.
 - The SRT export contains the original time-stamped segments; editing the main text doesn't revise the timing blocks.
 - Microphone recording availability and playback vary by browser.
 
-References: [Transformers.js pipeline docs](https://huggingface.co/docs/transformers.js/pipelines), [Whisper Tiny ONNX](https://huggingface.co/onnx-community/whisper-tiny).
+References: [Transformers.js pipeline docs](https://huggingface.co/docs/transformers.js/pipelines), [Whisper Base English ONNX](https://huggingface.co/onnx-community/whisper-base.en), [Whisper Small English ONNX](https://huggingface.co/onnx-community/whisper-small.en).
+
+## Model-picker regression
+
+The `modelSelect` HTML values must match the English keys in `asr-config.js` (`base` and `small`), and `modelHint` must exist for the runtime helper. Run `npm test` after editing this page.
