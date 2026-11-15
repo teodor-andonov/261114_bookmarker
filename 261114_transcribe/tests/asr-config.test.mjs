@@ -22,8 +22,10 @@ test('decoding configuration avoids timestamp and multilingual restrictions', ()
 test('audio segments never overlap, and short tails are merged', () => {
   const samples=new Float32Array(50*16000);
   const windows=speechWindows(samples);
-  assert.equal(windows.length,3);
-  assert.deepEqual(windows.map(w=>[w.start,w.end]),[[0,24],[24,48],[48,50]]);
+  assert.equal(windows.length,2);
+  assert.deepEqual(windows.map(w=>[w.start,w.end]),[[0,24],[24,50]]);
+  const long = speechWindows(new Float32Array(75*16000));
+  assert.deepEqual(long.map(w=>[w.start,w.end]), [[0,24],[24,48],[48,75]]);
   for(let i=1;i<windows.length;i++)assert.equal(windows[i].start,windows[i-1].end);
   assert.deepEqual(speechWindows(new Float32Array(27*16000)).map(x=>[x.start,x.end]),[[0,27]]);
   assert.deepEqual(speechWindows(new Float32Array(10*16000)).map(x=>[x.start,x.end]),[[0,10]]);
