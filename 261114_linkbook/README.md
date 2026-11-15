@@ -23,6 +23,6 @@ The Testlab workflow publishes this entire folder under:
 
 https://teodor-andonov.github.io/261114_testlab/261114_linkbook/
 
-Linkbook version lives in `package.json` (`v0.2.0-alpha.1`), and is displayed in the footer. The footer also displays the deployment's short Git SHA; Testlab's site assembly script injects that SHA from GitHub Actions, using `dev` in direct local preview.
+Linkbook version lives in `package.json` (`v0.2.0-alpha.1`) and appears on its Testlab gallery card, together with Git creation and update timestamps. Individual prototypes no longer display version badges. The gallery build injects the shared floating Home/theme controls, while `testlab-theme.css` supplies the dark colour palette.
 
 The browser still stores bookmarks locally in IndexedDB. The legacy Linkbook service-worker registration is automatically unregistered **only when its exact old scope matches this folder**. This cleanup does not touch the gallery worker or other repositories. The Android share-target integration was removed along with the Linkbook manifest; direct URL entry remains available.
