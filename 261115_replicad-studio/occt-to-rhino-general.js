@@ -168,7 +168,7 @@ export function convertGeneralNurbsBrep(shape,rhino,oc) {
               const vertex=brep.vertices.get(e.vertexIndex);
               trim=brep.trims.addSingularTrim(vertex,loop,isoFor(info.points,data,rhino),ci);
             }else{
-              const start=xyz(data.evaluate(item.reverse?item.b:item.a));
+              const start=data.evaluate(item.reverse?item.b:item.a);
               const rev3d=dist(start,e.a)>dist(start,e.b);
               trim=brep.trims.add(brep.edges.get(e.index),rev3d,loop,ci);
             }
