@@ -33,6 +33,7 @@ jobs:
           npm install --no-audit --no-fund
           npm test
           npm run test:cad
+          npm run probe:3dm
           npm run build
       - name: Assemble landing page and self-contained prototypes
         run: python3 .github/scripts/build_site.py
