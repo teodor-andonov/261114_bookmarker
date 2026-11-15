@@ -3,12 +3,14 @@ import wasmURL from "replicad-opencascadejs/wasm?url";
 import * as replicad from "replicad";
 
 let initialization = null;
+let openCascade = null;
 let builtShapes = [];
 
 function init() {
   if (!initialization) {
     initialization = initOpenCascade({ locateFile: () => wasmURL }).then(oc => {
       replicad.setOC(oc);
+      openCascade = oc;
       return true;
     });
   }
@@ -78,15 +80,27 @@ self.onmessage = async ({ data }) => {
         if (builtShapes.length > 1) throw new Error("STL export currently supports single-shape models. Use STEP for assemblies.");
         blob = builtShapes[0].shape.blobSTL();
       } else if (data.format === "3dm") {
-        // First try genuine shared-topology B-reps (including exact planar
-        // Boolean solids/holes) using the rhino3dm 9.2 beta builder.
-        // For supported curved primitives (complete spheres), retain the
-        // original exact 8.35 writer. Never substitute viewport meshes.
-        const { exportPlanarRhino3dm } = await import("./rhino-planar-export.js");
-        let bytes = await exportPlanarRhino3dm(builtShapes);
-        if (!bytes) {
-          const { exportExactRhino3dm } = await import("./rhino-export.js");
-          bytes = await exportExactRhino3dm(builtShapes);
+        // Use the general OCCT NURBS+B-rep translator for all parts, including
+        // fillets, cylindrical holes, periodic seams and singular poles.
+        // Keep verified planar / primitive writers as regression fallbacks.
+        // Never export meshes in place of precise Rhino geometry.
+        const { exportGeneralRhino3dm, exportPlanarRhino3dm } =
+          await import("./rhino-planar-export.js");
+        let bytes;
+        try {
+          bytes = await exportGeneralRhino3dm(builtShapes, openCascade);
+        } catch (generalError) {
+          try {
+            bytes = await exportPlanarRhino3dm(builtShapes);
+            if (!bytes) {
+              const { exportExactRhino3dm } = await import("./rhino-export.js");
+              bytes = await exportExactRhino3dm(builtShapes);
+            }
+          } catch {
+            // Report the real general converter error instead of the
+            // narrower primitive converter's "unsupported" message.
+            throw generalError;
+          }
         }
         const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
         self.postMessage({ id, type: "exported", format: data.format, bytes: buffer }, [buffer]);
