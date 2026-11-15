@@ -44,8 +44,15 @@ test("probe converting actual torus/sphere surface and circular edge to rhino ra
     const expected=face.pointOnSurface(u,v);
     const actual=surf.pointAt(u,v);
     const err=Math.hypot(expected.x-actual.X,expected.y-actual.Y,expected.z-actual.Z);
+    const reference=bs.Value(u,v);
     console.log("Rhino NURBS",face.geomType,"error using same UV",err,"isValid",surf.isValid,
-      "surface-domain",surf.domain(0),surf.domain(1));
+      "orig",expected.toTuple(),"oc bs", [reference.X(),reference.Y(),reference.Z()],
+      "rh",actual,"surface-domain",surf.domain(0),surf.domain(1));
+    for(const [ii,jj] of [[0,0],[0,1],[1,0],[1,1]]){
+      const cp=bs.Pole(ii+1,jj+1);
+      console.log(face.geomType,"CONTROL",ii,jj, "original",[cp.X(),cp.Y(),cp.Z(),bs.Weight(ii+1,jj+1)],
+        "rh getPoint",surf.points.getPoint(ii,jj),"rh getPoint4d",surf.points.getPoint4d(ii,jj),"weight",surf.points.getWeight(ii,jj));
+    }
     expected.delete();
     const brep=rh.Brep.createFromSurface(surf);
     console.log("surface brep",face.geomType,brep?.faces.count,brep?.isValidGeometry());
