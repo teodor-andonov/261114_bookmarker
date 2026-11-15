@@ -4,6 +4,7 @@ import initRhino from "rhino3dm-beta";
 import initOC from "replicad-opencascadejs";
 import * as replicad from "replicad";
 import { convertExactPlanarBrep } from "../occt-to-rhino.js";
+import { createExactPlanar3dm } from "../rhino-planar-core.js";
 
 test("OCCT six-face box converts into ONE valid CLOSED Rhino NURBS Brep", {timeout:120000}, async () => {
   const rhino = await initRhino();
@@ -64,4 +65,22 @@ test("planar Boolean cut and union export as exact closed Rhino B-reps", { timeo
     const reopenedBrep = [...reload.objects][0].geometry;
     assert.equal(reopenedBrep.isSolid, true, name + " should stay solid after reopening");
   }
+});
+
+test("production planar 3DM builder round-trips named parts with millimetre units", { timeout:120000 }, async () => {
+  const rhino = await initRhino();
+  const oc = await initOC();
+  replicad.setOC(oc);
+  const entries = [
+    { name: "Plate", shape: replicad.makeBaseBox(40,30,12) },
+    { name: "Block", shape: replicad.makeBaseBox(12,10,18).translate([60,0,0]) },
+  ];
+  const bytes = createExactPlanar3dm(entries,rhino);
+  assert.ok(bytes.length > 10000);
+  const read = rhino.File3dm.fromByteArray(bytes);
+  assert.equal(read.objects.count,2);
+  assert.equal(read.settings.modelUnitSystem,rhino.UnitSystem.Millimeters);
+  const shapes=[...read.objects].map(item=>item.geometry);
+  assert.ok(shapes.every(item=>item instanceof rhino.Brep && item.isSolid && item.isValidTopology()[0]));
+  console.log("Verified two exact solids with mm units in 3DM", bytes.length, "bytes");
 });
