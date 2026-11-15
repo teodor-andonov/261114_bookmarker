@@ -22,27 +22,30 @@ const main = (replicad, params) => {
   },
   {
     id: "booleans",
-    title: "Boolean + fillets",
-    description: "Two independent solids: a filleted plate with a through-hole, plus a rounded block. Tests cut, fillet, and multiple objects.",
+    title: "Boolean union + fillets",
+    description: "Drilled, filleted plate fused to an overlapping rounded block. Toggle Union parts to inspect both originals.",
     filename: "boolean-fillets.js",
-    source: `// 02 — BOOLEAN + FILLETS
-// Returns multiple independent solids. All dimensions are in mm.
+    source: `// 02 — BOOLEAN CUT + FILLET + UNION
+// Two intersecting solids can be fused into one connected solid.
+// Toggle unionParts to compare the parts before / after union.
 const defaultParams = {
   width: 80,
   depth: 50,
   height: 20,
   edgeRadius: 2,
   holeRadius: 10,
-  gap: 15,
+  overlap: 12,
+  unionParts: true,
 };
 
 const main = (replicad, params) => {
-  const { width, depth, height, edgeRadius, holeRadius, gap } = params;
+  const { width, depth, height, edgeRadius, holeRadius, overlap, unionParts } = params;
 
-  // Keep edge fillets and hole radii inside safe dimensions.
+  // Keep fillets and hole radii within the body's dimensions.
   const fillet = Math.max(0.2, Math.min(edgeRadius, width / 5, depth / 5, height / 5));
   const hole = Math.max(1, Math.min(holeRadius, width / 3, depth / 3));
 
+  // Base: fillet the plate, then subtract a through-hole.
   const plate = replicad.makeBaseBox(width, depth, height).fillet(fillet);
   const cutter = replicad.drawCircle(hole)
     .sketchOnPlane()
@@ -50,10 +53,20 @@ const main = (replicad, params) => {
     .translateZ(-2);
   const drilledPlate = plate.cut(cutter);
 
+  // Second rounded solid protrudes from one side of the plate.
+  // Ensure a positive volume intersection, not just coplanar contact.
   const blockWidth = Math.max(12, width / 3);
+  const intersection = Math.max(1, Math.min(overlap, blockWidth * 0.75, width / 3));
   const block = replicad.makeBaseBox(blockWidth, depth / 2, height * 1.4)
     .fillet(Math.min(fillet, 3))
-    .translate([width / 2 + gap + blockWidth / 2, 0, 0]);
+    .translate([
+      width / 2 + blockWidth / 2 - intersection,
+      0,
+      height * 0.3,
+    ]);
+
+  // Both bodies are B-reps. Fuse returns one exact Boolean solid.
+  if (unionParts) return drilledPlate.fuse(block);
 
   return [
     { name: "Drilled plate", shape: drilledPlate },
