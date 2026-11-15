@@ -20,6 +20,7 @@
       <div class="toolbar" role="toolbar" aria-label="Files and model">
         <button id="newButton" title="New model">New</button>
         <button id="openButton" title="Open JavaScript model file">Open</button>
+        <button id="demosButton" title="Load an example model from the built-in library">Load demo</button>
         <button id="saveButton" title="Save model code">Save</button>
         <button id="saveAsButton" title="Save model under a new name">Save as</button>
         <span class="vertical-divider"></span>
@@ -69,6 +70,17 @@
     </main>
     <footer><span>TESTLAB / EXPERIMENT 03</span><span>Local code · Local computation · No account</span></footer>
   </div>
+  <dialog id="demoDialog" aria-labelledby="demoDialogTitle" class="demo-dialog">
+    <div class="demo-dialog-head">
+      <div>
+        <div class="demo-kicker">BUILT-IN LIBRARY</div>
+        <h2 id="demoDialogTitle">Load a demo model</h2>
+        <p>Choose an example to open its JavaScript in the editor. You can edit it and Save as a normal .js file.</p>
+      </div>
+      <button type="button" id="closeDemoDialog" class="dialog-close" aria-label="Close demo library">×</button>
+    </div>
+    <div id="demoList" class="demo-list"></div>
+  </dialog>
   <input id="openInput" type="file" accept=".js,text/javascript" hidden>
   <script type="module" src="./app.js"></script>
 </body>
