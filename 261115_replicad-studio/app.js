@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { syncFaces, syncLines } from "replicad-threejs-helper";
-import { EditorState } from "@codemirror/state";
+import { EditorState, Compartment } from "@codemirror/state";
 import { EditorView, lineNumbers, highlightActiveLine, keymap, drawSelection } from "@codemirror/view";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
@@ -11,8 +11,7 @@ import { DEMOS, NEW_MODEL } from "./examples.js";
 import { parameterEdit } from "./param-source.js";
 
 const $ = id => document.getElementById(id);
-$("appVersion").textContent = "v" + __APP_VERSION__ + " · " + __APP_REVISION__;
-$("appVersion").title = "Version " + __APP_VERSION__ + " · Git commit " + __APP_REVISION__ + " (deployed build)";
+const editorColour = new Compartment();
 let programmaticEditorUpdate = false;
 const editor = new EditorView({
   state: EditorState.create({
@@ -26,7 +25,7 @@ const editor = new EditorView({
       bracketMatching(),
       EditorView.contentAttributes.of({ spellcheck: "false", autocapitalize: "off", autocorrect: "off" }),
       javascript(),
-      oneDark,
+      editorColour.of(document.documentElement.dataset.theme === "light" ? [] : oneDark),
       keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
       EditorView.updateListener.of(update => {
         if (update.docChanged && !programmaticEditorUpdate) onSourceEdited();
@@ -40,6 +39,9 @@ const editor = new EditorView({
     ],
   }),
   parent: $("code"),
+});
+window.addEventListener("testlab:themechange", event => {
+  editor.dispatch({effects: editorColour.reconfigure(event.detail.theme === "light" ? [] : oneDark)});
 });
 // Preserve a simple code.value interface for the file system and worker paths.
 const code = {
