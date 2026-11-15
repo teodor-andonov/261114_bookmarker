@@ -4,6 +4,7 @@
 import initRhino from "rhino3dm-beta/rhino3dm.module.js";
 import rhinoWasmURL from "rhino3dm-beta/rhino3dm.wasm?url";
 import { createExactPlanar3dm } from "./rhino-planar-core.js";
+import { createGeneralNurbs3dm } from "./rhino-general-core.js";
 
 let initPromise;
 
@@ -16,4 +17,15 @@ export async function exportPlanarRhino3dm(entries) {
   }
   const rhino = await initPromise;
   return createExactPlanar3dm(entries, rhino);
+}
+
+/** Preferred general CAD-to-Rhino B-rep exporter. */
+export async function exportGeneralRhino3dm(entries, oc) {
+  if (!initPromise) {
+    initPromise = initRhino({ locateFile: () => rhinoWasmURL }).catch(error => {
+      initPromise = null;
+      throw error;
+    });
+  }
+  return createGeneralNurbs3dm(entries, await initPromise, oc);
 }
