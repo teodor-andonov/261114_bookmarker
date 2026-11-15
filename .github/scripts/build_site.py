@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Build a static GitHub Pages site, automatically listing dated prototype folders."""
 import json
+import os
 import re
 import shutil
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -17,6 +19,10 @@ def main():
         shutil.copy2(ROOT / name, OUTPUT / name)
     shutil.copytree(ROOT / "icons", OUTPUT / "icons")
     (OUTPUT / ".nojekyll").touch()
+    commit_sha = os.environ.get('GITHUB_SHA', '').strip()
+    if not commit_sha:
+        commit_sha = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=ROOT, capture_output=True, text=True, check=False).stdout.strip()
+    short_sha = re.sub(r'[^0-9a-f]', '', commit_sha.lower())[:7] or 'unknown'
     projects = []
     for folder in sorted(ROOT.iterdir(), reverse=True):
         match = PATTERN.fullmatch(folder.name)
@@ -40,6 +46,10 @@ def main():
         # Simple HTML prototypes keep their original source-only workflow.
         publish_from = folder / "build" if (folder / "build" / "index.html").is_file() else folder
         shutil.copytree(publish_from, OUTPUT / folder.name, ignore=shutil.ignore_patterns("node_modules", ".git", ".DS_Store", "tests", "__pycache__"))
+        published_index = OUTPUT / folder.name / 'index.html'
+        html = published_index.read_text(encoding='utf-8')
+        if '__LINKBOOK_BUILD_SHA__' in html:
+            published_index.write_text(html.replace('__LINKBOOK_BUILD_SHA__', short_sha), encoding='utf-8')
     (OUTPUT / "catalog.json").write_text(json.dumps({"projects": projects}, indent=2) + "\n", encoding="utf-8")
     print("Built Testlab:", len(projects), "prototype(s)")
     for project in projects:
