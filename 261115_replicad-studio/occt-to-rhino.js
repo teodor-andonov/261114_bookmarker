@@ -131,10 +131,25 @@ export function convertExactPlanarBrep(shape, rhino) {
             newFace
           );
           if (!loop) throw new Error("Could not construct a Rhino trimming loop");
-          if (wires.length > 1) console.log("3dm loop debug", {faceIndex, wireIndex, loopType: loop.loopType, isInner: loop.loopType === rhino.BrepLoopType.Inner, expectedInner: wireIndex > 0, loopCount: brep.loops.count});
           const loopEdges = wire.edges;
           try {
-            const ordered = orderedWireEdges(loopEdges);
+            let ordered = orderedWireEdges(loopEdges);
+            // openNURBS defines outer loops counterclockwise and holes
+            // clockwise in the underlying surface's UV domain. OCCT's
+            // edge explorer order alone does not guarantee this convention.
+            const signedArea = ordered.reduce((area, item) => {
+              const start = item.reverse ? item.b : item.a;
+              const end = item.reverse ? item.a : item.b;
+              const [u0, v0] = uvOnFace(face, start, bounds);
+              const [u1, v1] = uvOnFace(face, end, bounds);
+              return area + (u0 * v1 - u1 * v0);
+            }, 0);
+            if (Math.abs(signedArea) < 1e-12) throw new Error("Degenerate planar trim loop");
+            if ((signedArea > 0) !== (wireIndex === 0)) {
+              ordered = ordered.reverse().map(item => ({
+                ...item, reverse: !item.reverse,
+              }));
+            }
             for (const item of ordered) {
               const mapped = edgeMap.get(String(item.edge.hashCode));
               if (!mapped) throw new Error("OpenCascade face edge not found in solid");
