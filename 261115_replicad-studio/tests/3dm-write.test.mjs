@@ -16,7 +16,10 @@ test("OCCT planar face -> native Rhino NURBS Brep -> 3dm -> reimport", { timeout
     [uMin, vMin], [uMin, vMax],
     [uMax, vMin], [uMax, vMax],
   ].map(([u, v]) => {
-    const position = face.pointOnSurface(u, v);
+    const position = face.pointOnSurface(
+      (u - uMin) / (uMax - uMin),
+      (v - vMin) / (vMax - vMin)
+    );
     const coords = { X: position.x, Y: position.y, Z: position.z };
     position.delete();
     return coords;
