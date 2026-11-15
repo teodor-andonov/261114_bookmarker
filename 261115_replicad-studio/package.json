@@ -8,7 +8,7 @@
     "preview": "vite preview",
     "test": "node --test tests/*.test.mjs",
     "test:cad": "node --test tests/cad-geometry.test.mjs",
-    "probe:3dm": "node tests/3dm-beta-probe.mjs"
+    "probe:3dm": "node tests/3dm-beta-probe.mjs && node tests/3dm-surface-probe.mjs"
   },
   "dependencies": {
     "replicad": "1.2.1",
