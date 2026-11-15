@@ -21,7 +21,8 @@ function makeExactPlanarSurface(face, rhino) {
   for (let i = 0; i < 2; i++) {
     for (let j = 0; j < 2; j++) {
       const uv = [i ? uMax : uMin, j ? vMax : vMin];
-      const position = pointFrom(face.pointOnSurface(...uv));
+      // Replicad Face.pointOnSurface takes normalized [0,1], not native UV.
+      const position = pointFrom(face.pointOnSurface(i, j));
       if (!surface.points.setPoint(i, j, point3(position))) {
         throw new Error("Rhino rejected exact planar surface control point");
       }
