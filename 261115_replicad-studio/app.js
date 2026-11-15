@@ -414,6 +414,10 @@ function onSourceEdited() {
   setDirty(true);
   built = false;
   exportsEnabled(false);
+  // Controls were generated from an older code revision. Require Run to
+  // validate and regenerate them before another parameter interaction.
+  paramsRoot.querySelectorAll("input").forEach(input => { input.disabled = true; });
+  paramsNote.textContent = "Run to refresh";
   status("Code changed · press Run");
 }
 window.addEventListener("keydown", event => {
