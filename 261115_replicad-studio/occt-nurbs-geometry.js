@@ -97,6 +97,10 @@ export function makeNurbsFace(face,rhino,oc) {
   // Face.pointOnSurface uses normalized [0,1]; evaluate native OCCT UV
   // on the underlying geometry instead, preserving actual dimensions.
   const native=oc.BRep_Tool.Surface(face.wrapped);
+  const periods=[
+    native.IsUPeriodic() ? native.UPeriod() : null,
+    native.IsVPeriodic() ? native.VPeriod() : null,
+  ];
   const evaluate=([u,v])=>position(native.Value(u,v));
   let surface;
   if(type==="PLANE") {
@@ -146,7 +150,7 @@ export function makeNurbsFace(face,rhino,oc) {
         " target="+JSON.stringify(expected)+" actual="+JSON.stringify(p));
     return [u,v];
   };
-  return {surface,map,domain,type,evaluate};
+  return {surface,map,domain,type,evaluate,periods,bounds};
 }
 
 export function makeNurbsEdge(edge,rhino,oc) {
@@ -213,16 +217,16 @@ export function exactUvPolyline(rhino,points) {
   return cv;
 }
 
-export function sampleTrim(adaptor,faceData,face,rhino,{tolerance=5e-5,maxDepth=9}={}) {
+export function sampleTrim(adaptor,faceData,face,rhino,{tolerance=5e-5,maxDepth=9,offset=[0,0]}={}) {
   const first=adaptor.FirstParameter(),last=adaptor.LastParameter();
   if(!finite([first,last])||last<=first)throw Error("Invalid 2D trim domain");
   const mapped=t=>{
     const p=adaptor.Value(t);
-    return faceData.map([p.X(),p.Y()]);
+    return faceData.map([p.X()+offset[0],p.Y()+offset[1]]);
   };
   const sourcePoint=t=>{
     const p=adaptor.Value(t);
-    return faceData.evaluate([p.X(),p.Y()]);
+    return faceData.evaluate([p.X()+offset[0],p.Y()+offset[1]]);
   };
   const sample=(t0,p0,t1,p1,depth)=>{
     const mid=(t0+t1)/2,pm=mapped(mid);
