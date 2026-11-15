@@ -22,7 +22,10 @@ export function createExactPlanar3dm(entries, rhino) {
     const doc = new rhino.File3dm();
     try {
       doc.applicationName = "Replicad Studio";
-      doc.settings.modelUnitSystem = rhino.UnitSystem.Millimeters;
+      // Beta 9.2 currently exposes modelUnitSystem as read-only.
+      // Check its default explicitly; do not mislabel unitless files as mm.
+      console.log("3dm beta default unit system", doc.settings.modelUnitSystem,
+        "isMillimeters", doc.settings.modelUnitSystem === rhino.UnitSystem.Millimeters);
       doc.settings.modelAbsoluteTolerance = 0.001;
       for (const brep of breps) {
         const added = doc.objects.addBrep(brep);
