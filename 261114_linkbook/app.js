@@ -4,16 +4,18 @@ import { coverIdentity, coverImage, isLocalCover } from './cover.js';
 
 const $ = id => document.getElementById(id);
 const els = {
-  addForm: $('addForm'), url: $('urlInput'), addButton: $('addButton'), message: $('message'),
+  addForm: $('addForm'), url: $('urlInput'), message: $('message'),
   count: $('totalCount'), search: $('searchInput'), sort: $('sortSelect'), tags: $('tagFilters'),
   list: $('bookmarkList'), empty: $('emptyState'), emptyTitle: $('emptyTitle'), emptyDescription: $('emptyDescription'),
-  gridButton: $('gridButton'), listButton: $('listButton'), exportButton: $('exportButton'), importButton: $('importButton'), importFile: $('importFile'),
-  dialog: $('detailDialog'), detailForm: $('detailForm'), closeDialog: $('closeDialog'), deleteButton: $('deleteButton'),
-  refreshButton: $('refreshButton'), metadataStatus: $('detailMetadataStatus'),
-  coverPreview: $('coverEditorPreview'), coverUpload: $('coverUpload'), clearCover: $('clearCoverButton')
+  commandsButton: $('commandsButton'), commandsDialog: $('commandsDialog'),
+  commandSearch: $('commandSearch'), commandResults: $('commandResults'),
+  importFile: $('importFile'),
+  dialog: $('detailDialog'), detailForm: $('detailForm'), metadataStatus: $('detailMetadataStatus')
 };
-
-const state = { bookmarks: [], view: getSavedView(), selectedTag: '', selectedId: null, loading: false, coverUploadData: '' };
+const state = {
+  bookmarks: [], view: getSavedView(), selectedTag: '', selectedId: null,
+  loading: false, refreshing: false, stopRefresh: false
+};
 
 function getSavedView() {
   try { return localStorage.getItem('linkbook-view') === 'list' ? 'list' : 'grid'; }
@@ -34,7 +36,7 @@ function filteredBookmarks() {
   const matched = state.bookmarks.filter(b => {
     if (state.selectedTag && !(b.tags || []).includes(state.selectedTag)) return false;
     if (!needle) return true;
-    return [b.url, b.title, b.description, b.siteName, b.author, b.notes, ...(b.tags || [])].some(v => String(v || '').toLocaleLowerCase().includes(needle));
+    return [b.url, b.title, b.description, b.siteName, b.author, b.notes, b.contentMarkdown, ...(b.tags || [])].some(v => String(v || '').toLocaleLowerCase().includes(needle));
   });
   const sort = els.sort.value;
   matched.sort((a, b) => {
@@ -45,9 +47,6 @@ function filteredBookmarks() {
   });
   return matched;
 }
-
-const editIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16 4a2 2 0 0 1 3 3L9 17l-4 1 1-4L16 4Z"/></svg>';
-const externalIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9"/><path d="M20 13v7H4V4h7"/></svg>';
 
 function coverMarkup(bookmark) {
   const cover = coverIdentity(bookmark);
@@ -72,18 +71,20 @@ function cardHtml(b) {
   const domain = domainOf(b.url);
   const hasPhoto = Boolean(coverImage(b));
   const icon = safeImageUrl(b.favicon, b.url);
-  const favicon = icon ? `<img class="favicon" src="${escapeHtml(icon)}" loading="lazy" referrerpolicy="no-referrer" alt="" />` : '<span class="favicon is-hidden"></span>';
-  const tags = (b.tags || []).slice(0, 3).map(tag => `<span class="inline-tag">${escapeHtml(tag)}</span>`).join('');
-  return `<article class="bookmark-card ${hasPhoto ? '' : 'no-cover-image'}" data-id="${escapeHtml(b.id)}">
-    ${coverMarkup(b)}
-    <div class="bookmark-body">
-      <div class="bookmark-meta">${favicon}<span class="favicon-fallback">${escapeHtml((domain[0] || 'L').toUpperCase())}</span><span class="domain" title="${escapeHtml(domain)}">${escapeHtml(b.siteName || domain)}</span></div>
-      <h3 title="${escapeHtml(b.title)}">${escapeHtml(b.title || domain)}</h3>
-      <p class="description">${escapeHtml(b.description || 'Saved for later')}</p>
-      ${tags ? `<div class="inline-tags">${tags}</div>` : ''}
-      <div class="bookmark-foot"><span class="date-added">${escapeHtml(displayDate(b.createdAt))}</span><div class="card-actions"><button type="button" class="tiny-action" data-action="edit" title="Edit bookmark" aria-label="Edit ${escapeHtml(b.title)}">${editIcon}</button><a class="tiny-action" href="${escapeHtml(b.url)}" target="_blank" rel="noopener noreferrer" title="Open page" aria-label="Open ${escapeHtml(b.title)}">${externalIcon}</a></div></div>
-    </div>
-  </article>`;
+  const favicon = icon
+    ? '<img class="favicon" src="' + escapeHtml(icon) + '" loading="lazy" referrerpolicy="no-referrer" alt="" />'
+    : '<span class="favicon is-hidden"></span>';
+  const tags = (b.tags || []).slice(0, 3).map(tag => '<span class="inline-tag">' + escapeHtml(tag) + '</span>').join('');
+  return '<article class="bookmark-card ' + (hasPhoto ? '' : 'no-cover-image') + '" data-id="' + escapeHtml(b.id) + '" tabindex="0" role="button" aria-label="Edit details: ' + escapeHtml(b.title) + '">' +
+    '<a class="bookmark-cover-link" href="' + escapeHtml(b.url) + '" target="_blank" rel="noopener noreferrer" aria-label="Open ' + escapeHtml(b.title) + '">' + coverMarkup(b) + '</a>' +
+    '<div class="bookmark-body">' +
+      '<div class="bookmark-meta">' + favicon + '<span class="favicon-fallback">' + escapeHtml((domain[0] || 'L').toUpperCase()) + '</span><span class="domain">' + escapeHtml(domain) + '</span></div>' +
+      '<h3 title="' + escapeHtml(b.title) + '">' + escapeHtml(b.title || domain) + '</h3>' +
+      '<p class="description">' + escapeHtml(b.description || 'Saved for later') + '</p>' +
+      (tags ? '<div class="inline-tags">' + tags + '</div>' : '') +
+      '<div class="bookmark-foot"><span class="date-added">' + escapeHtml(displayDate(b.createdAt)) +
+      '</span><span class="card-hint">Select to edit · Cover to open</span></div>' +
+    '</div></article>';
 }
 
 function renderTags() {
@@ -99,10 +100,6 @@ function render() {
   renderTags();
   const bookmarks = filteredBookmarks();
   els.list.className = state.view === 'list' ? 'bookmark-grid list-view' : 'bookmark-grid';
-  els.gridButton.classList.toggle('active', state.view === 'grid');
-  els.listButton.classList.toggle('active', state.view === 'list');
-  els.gridButton.setAttribute('aria-pressed', String(state.view === 'grid'));
-  els.listButton.setAttribute('aria-pressed', String(state.view === 'list'));
   els.list.innerHTML = bookmarks.map(cardHtml).join('');
   els.empty.hidden = bookmarks.length !== 0;
   if (state.bookmarks.length === 0) {
@@ -115,17 +112,18 @@ function render() {
 }
 
 async function enrichBookmark(bookmark, sharedTitle) {
-  try {
-    const enriched = await getMetadata(bookmark.url, sharedTitle);
-    if (enriched.metadataSource === 'basic') return;
-    const current = await getBookmark(bookmark.id);
-    if (!current || current.updatedAt !== bookmark.updatedAt) return; // Never overwrite a newer user edit.
-    await saveBookmark({ ...current, ...enriched });
+  const enriched = await getMetadata(bookmark.url, sharedTitle);
+  const current = await getBookmark(bookmark.id);
+  if (!current || current.updatedAt !== bookmark.updatedAt) return;
+  if (enriched.metadataSource === 'basic') {
+    await saveBookmark({...current, metadataError: enriched.metadataError || 'Metadata unavailable', metadataCheckedAt: enriched.metadataCheckedAt});
     await reload();
-    notify('Saved locally with page metadata.', 'success');
-  } catch (error) {
-    console.warn('Optional metadata extraction failed:', error);
+    notify('Link saved. Metadata unavailable: ' + (enriched.metadataError || 'No article found'), 'error');
+    return;
   }
+  await saveBookmark({ ...current, ...enriched, updatedAt: new Date().toISOString() });
+  await reload();
+  notify(enriched.image ? 'Link enriched with article text and image.' : 'Link enriched with text; no usable article image found.', 'success');
 }
 
 async function createBookmark(rawUrl, sharedTitle = '') {
@@ -139,65 +137,27 @@ async function createBookmark(rawUrl, sharedTitle = '') {
   };
   await saveBookmark(bookmark);
   await reload();
-  notify('Saved locally. Additional metadata is best effort; you can edit details at any time.', 'success');
+  notify('Saved locally. Fetching article metadata and text via Defuddle…', 'success');
   // Save first; attempt metadata enrichment without blocking the Add button.
   void enrichBookmark(bookmark, sharedTitle);
   return true;
 }
 
 function formControl(name) { return els.detailForm.elements.namedItem(name); }
-function coverDraft() {
-  const original = state.bookmarks.find(b => b.id === state.selectedId);
-  return {
-    ...original,
-    title: formControl('title').value || original?.title || '',
-    coverMode: formControl('coverMode').value,
-    customCoverUrl: formControl('customCoverUrl').value,
-    coverData: state.coverUploadData
-  };
-}
-function updateCoverPreview() {
-  if (state.selectedId) {
-    els.coverPreview.innerHTML = coverMarkup(coverDraft());
-    // If an image fails, reveal the neutral text/favicon cover.
-    const img = els.coverPreview.querySelector('.preview-image');
-    if (img) img.addEventListener('error', () => img.classList.add('is-hidden'));
-  }
-}
+
 function fillEditor(bookmark) {
   state.selectedId = bookmark.id;
-  state.coverUploadData = isLocalCover(bookmark.coverData) ? bookmark.coverData : '';
-  for (const name of ['title', 'url', 'description', 'author', 'published', 'image', 'notes']) formControl(name).value = bookmark[name] || '';
+  for (const name of ['title', 'url', 'description', 'author', 'published', 'notes']) {
+    formControl(name).value = bookmark[name] || '';
+  }
   formControl('tags').value = (bookmark.tags || []).join(', ');
-  formControl('coverMode').value = ['auto','graphic','custom'].includes(bookmark.coverMode) ? bookmark.coverMode : 'auto';
-  formControl('customCoverUrl').value = bookmark.customCoverUrl || '';
-  els.coverUpload.value = '';
-  els.metadataStatus.textContent = bookmark.metadataSource === 'basic'
-    ? 'No metadata fetched yet. Linkbook uses Defuddle for optional metadata and saves your links locally.'
-    : `Metadata source: ${bookmark.metadataSource === 'defuddle-api' ? 'Defuddle hosted API' : 'previous source'}. Custom covers survive metadata refresh.`;
-  updateCoverPreview();
-}
-
-async function resizeCover(file) {
-  const allowed = ['image/jpeg', 'image/png', 'image/webp'];
-  if (!allowed.includes(file.type)) throw new Error('Upload a PNG, JPEG, or WebP image.');
-  if (file.size > 10_000_000) throw new Error('Image is too large; choose one under 10 MB.');
-  let bitmap;
-  try { bitmap = await createImageBitmap(file); }
-  catch { throw new Error('Could not read this image. Try PNG or JPEG.'); }
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1000; canvas.height = 630;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Canvas image conversion is unavailable.');
-    const crop = Math.min(bitmap.width / canvas.width, bitmap.height / canvas.height);
-    const width = canvas.width * crop, height = canvas.height * crop;
-    ctx.drawImage(bitmap, (bitmap.width-width)/2, (bitmap.height-height)/2, width, height, 0, 0, canvas.width, canvas.height);
-    let data = canvas.toDataURL('image/webp', .76);
-    if (!data.startsWith('data:image/webp;')) data = canvas.toDataURL('image/jpeg', .75);
-    if (!isLocalCover(data)) throw new Error('Converted image is still too large. Try a smaller photo.');
-    return data;
-  } finally { bitmap.close?.(); }
+  formControl('contentMarkdown').value = bookmark.contentMarkdown || '';
+  const source = bookmark.metadataSource === 'defuddle-api'
+    ? 'Defuddle · ' + (bookmark.image ? 'article image available' : 'no article image') +
+      ' · ' + (bookmark.contentMarkdown ? 'full text stored locally' : 'no text extracted')
+    : 'No successful Defuddle extraction yet';
+  els.metadataStatus.textContent = source +
+    (bookmark.metadataError ? ' · Last error: ' + bookmark.metadataError : '');
 }
 
 async function openEditor(id) {
