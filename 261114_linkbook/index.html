@@ -14,9 +14,7 @@
     <header class="topbar">
       <div class="brand"><span class="brand-symbol" aria-hidden="true">L<span class="brand-dot">.</span></span><div class="brand-label"><strong>LINKBOOK</strong><small>PERSONAL LIBRARY</small></div></div>
       <div class="top-actions">
-        <span class="local-label"><span class="local-dot"></span> Stored locally</span>
-        <button id="importButton" class="button ghost small" type="button" title="Import a JSON backup">Import</button>
-        <button id="exportButton" class="button ghost small" type="button" title="Download a JSON backup">Export</button>
+        <button id="commandsButton" class="button ghost small" type="button" aria-haspopup="dialog" aria-controls="commandsDialog" title="Commands (Ctrl/⌘+K)">⌘ Commands</button>
         <input id="importFile" type="file" accept="application/json,.json" hidden />
       </div>
     </header>
@@ -34,7 +32,7 @@
         <span class="input-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></span>
         <label for="urlInput" class="sr-only">URL to bookmark</label>
         <input id="urlInput" type="url" inputmode="url" placeholder="Paste a link to save..." required />
-        <button id="addButton" class="button primary" type="submit"><span class="plus">+</span> Save link</button>
+        <span class="input-submit-hint">Enter ↵</span>
       </form>
       <p id="message" class="message" aria-live="polite"></p>
 
@@ -43,10 +41,7 @@
         <div class="control-right">
           <label class="sr-only" for="sortSelect">Sort bookmarks</label>
           <select id="sortSelect" class="select" aria-label="Sort bookmarks"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="title">Title A–Z</option><option value="domain">By website</option></select>
-          <div class="view-toggle" role="group" aria-label="View type">
-            <button id="gridButton" type="button" aria-label="Grid view" title="Grid view" class="view-button active"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
-            <button id="listButton" type="button" aria-label="List view" title="List view" class="view-button"><svg viewBox="0 0 24 24"><path d="M9 5h12M9 12h12M9 19h12"/><path d="M3 5h2M3 12h2M3 19h2"/></svg></button>
-          </div>
+
         </div>
       </section>
       <div id="tagFilters" class="tag-filters" aria-label="Filter by tag"></div>
@@ -62,33 +57,28 @@
 
   <dialog id="detailDialog" class="detail-dialog">
     <form id="detailForm" class="detail-form">
-      <div class="dialog-heading"><div><div class="eyebrow">BOOKMARK DETAILS</div><h2>Edit bookmark</h2></div><button id="closeDialog" type="button" class="icon-button" aria-label="Close">×</button></div>
+      <div class="dialog-heading"><div><div class="eyebrow">BOOKMARK DETAILS</div><h2>Edit bookmark</h2></div><span class="helper">Esc to close</span></div>
       <div class="dialog-fields">
         <label>Title<input name="title" type="text" required maxlength="500" /></label>
         <label>URL<input name="url" type="url" required /></label>
         <label>Description<textarea name="description" rows="2" maxlength="5000"></textarea></label>
         <div class="two-fields"><label>Author<input name="author" type="text" maxlength="300" /></label><label>Publication date<input name="published" type="date" /></label></div>
-        <div class="cover-editor">
-          <div class="cover-editor-head"><div><strong>COVER</strong><span>Image or text and favicon</span></div><span class="cover-editor-marker">LINKBOOK / 02</span></div>
-          <div id="coverEditorPreview" class="cover-editor-preview" aria-label="Cover preview"></div>
-          <label>Cover appearance
-            <select name="coverMode">
-              <option value="auto">Automatic — image when available, otherwise simple</option>
-              <option value="graphic">Simple cover — website and page title</option>
-              <option value="custom">Custom — uploaded image or image URL</option>
-            </select>
-          </label>
-          <div class="cover-upload-row"><label class="upload-cover-button" for="coverUpload">Choose image <span>PNG · JPG · WebP</span></label><input id="coverUpload" name="coverUpload" type="file" accept="image/png,image/jpeg,image/webp" hidden /><button id="clearCoverButton" type="button" class="clear-cover-button">Use simple cover</button></div>
-          <label>Custom image URL<input name="customCoverUrl" type="url" placeholder="https://..." /></label>
-          <details><summary>Original webpage image URL (optional)</summary><label>Extracted image URL<input name="image" type="url" placeholder="https://..." /></label></details>
-          <p class="cover-editor-note">Uploaded covers are saved locally. Defuddle receives only URLs requested for metadata.</p>
-        </div>
+        <label>Extracted article text <span class="helper">(read-only, saved locally)</span>
+          <textarea name="contentMarkdown" rows="8" readonly placeholder="No article text extracted for this link."></textarea>
+        </label>
         <label>Tags <span class="helper">(comma separated)</span><input name="tags" type="text" placeholder="Design, Research, References" /></label>
         <label>Notes<textarea name="notes" rows="3" placeholder="Why did you save this?" maxlength="10000"></textarea></label>
         <div id="detailMetadataStatus" class="detail-help"></div>
       </div>
-      <div class="dialog-actions"><button id="deleteButton" class="button danger" type="button">Delete</button><button id="refreshButton" class="button ghost" type="button">Retry metadata</button><span class="flex-spacer"></span><button class="button primary" type="submit">Save changes</button></div>
+      <div class="dialog-actions"><p class="detail-help">Save with Ctrl/⌘ + Enter, or use Commands → Save changes.</p></div>
     </form>
+  </dialog>
+  <dialog id="commandsDialog" class="commands-dialog" aria-labelledby="commandsTitle">
+    <div class="commands-heading"><h2 id="commandsTitle">Commands</h2><span>Esc to close</span></div>
+    <label class="sr-only" for="commandSearch">Search commands and bookmarks</label>
+    <input id="commandSearch" class="command-search" type="search" autocomplete="off" placeholder="Search commands, links..." />
+    <div id="commandResults" class="command-results" role="group" aria-label="Available commands"></div>
+    <p class="command-help">Ctrl/⌘ + K to open · Enter to run · ↑↓ to navigate</p>
   </dialog>
   <script type="module" src="./app.js"></script>
 </body>
