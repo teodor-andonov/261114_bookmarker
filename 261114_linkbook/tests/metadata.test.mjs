@@ -117,3 +117,13 @@ test('metadata rate-limit errors are reported without losing the URL fallback', 
     assert.equal(data.favicon,'https://example.org/favicon.ico');
   } finally {globalThis.fetch=oldFetch;}
 });
+
+test('fallback excerpt reads article text without Markdown code blocks or images', async () => {
+  const { articleExcerpt } = await import('../metadata.js');
+  assert.equal(
+    articleExcerpt('# Headline\n\nHere is useful [text](https://example.org/link).\n\n![Image](https://example.org/image.jpg)\n\n```js
+const secret=42;
+```'),
+    'Headline Here is useful text.'
+  );
+});
