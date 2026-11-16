@@ -38,6 +38,12 @@ jobs:
           npm test
           npm run test:cad
           npm run build
+      - name: Build Modular Studio
+        working-directory: 261116_modular-studio
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+          npm run build
       - name: Assemble landing page and self-contained prototypes
         run: python3 .github/scripts/build_site.py
       - uses: actions/configure-pages@v5

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#15191e">
+  <meta name="description" content="Modular Studio — five composable CAD panels in a dockable workspace.">
+  <title>Modular Studio · Testlab</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="studio-shell">
+    <header class="topbar">
+      <div class="identity"><span class="wordmark">MODULAR <strong>STUDIO</strong></span><span class="prototype-label">TESTLAB</span></div>
+      <div class="document-indicator"><span id="documentName">pavilion.js</span><span id="dirty" hidden>●</span></div>
+      <div class="top-actions">
+        <span id="status" role="status" aria-live="polite">Starting…</span>
+        <button type="button" id="commandButton" title="Open command palette (Ctrl/⌘ K)">Commands <kbd>⌘ K</kbd></button>
+      </div>
+    </header>
+    <div class="utility-bar">
+      <div>ACTIVE BOX <strong id="focusLabel">Editor</strong></div>
+      <div class="shortcut-hint">Drag tabs to dock / split · Tab switches tabs · Space maximises · Ctrl/⌘ Enter runs</div>
+    </div>
+    <main id="workspace" class="workspace" aria-label="Dockable panels"></main>
+    <footer class="footer"><span>01 / WORKSPACE EXPERIMENT</span><span>Browser-only · Source-owned · Local computation</span></footer>
+  </div>
+
+  <dialog id="commandPalette" class="command-dialog" aria-labelledby="commandLabel">
+    <div class="command-header">
+      <label id="commandLabel" for="commandSearch">Command palette</label>
+      <button id="closePalette" type="button" aria-label="Close command palette">×</button>
+    </div>
+    <input id="commandSearch" type="search" autocomplete="off" spellcheck="false" placeholder="Search actions or panels…">
+    <div id="commandResults" class="command-results"></div>
+    <div class="command-footer">Ctrl / ⌘ + K to open · ↑ ↓ navigate · Enter execute · Esc close</div>
+  </dialog>
+  <input id="openInput" type="file" accept=".js,text/javascript" hidden>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
