@@ -1,14 +1,14 @@
 {
   "title": "Modular Studio",
-  "description": "A minimal architecture-studio shell with five independent dockable panels: code editor, 3D viewer, Replicad runner, Prettier formatter, and source-synchronised parametric controls.",
+  "description": "A minimal dockable architecture workspace with Replicad execution, source-backed parameters, an explicit geometry translation layer for viewer meshes/STEP/STL, and simple box-or-gap docking.",
   "category": "Computational design",
   "status": "Experiment",
   "monogram": "MS",
   "tags": [
     "CAD",
     "Replicad",
+    "Geometry formats",
     "Docking",
-    "Local-first",
-    "Vanilla JS"
+    "Local-first"
   ]
 }
