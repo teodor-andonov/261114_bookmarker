@@ -56,48 +56,72 @@ export function youtubeVideoId(u) {
   return /^[a-zA-Z0-9_-]{11}$/.test(id) ? id : '';
 }
 
-// Defuddle's hosted API returns Markdown with a small, flat YAML frontmatter block.
-// Only its metadata is retained; the article body is not saved in Linkbook.
-// The public API intentionally does not include image and favicon fields.
-export function parseDefuddleFrontmatter(markdown) {
+// Defuddle returns YAML frontmatter followed by cleaned article Markdown.
+// Image URLs are not separately exposed by its hosted response. We can only
+// use pictures included in the extracted article, not guaranteed hero images.
+export function parseDefuddleResponse(markdown) {
   if (typeof markdown !== 'string' || !markdown.startsWith('---')) return null;
-  const match = markdown.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
-  if (!match || match[1].length > 20_000) return null;
+  const matched = markdown.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+  if (!matched || matched[1].length > 20_000) return null;
   const metadata = Object.create(null);
-  for (const line of match[1].split(/\r?\n/)) {
+  for (const line of matched[1].split(/\r?\n/)) {
     const item = line.match(/^([a-z_]+):\s*(.*)$/i);
     if (!item) continue;
     let value = item[2].trim();
     if (value.startsWith('"') && value.endsWith('"')) {
-      value = value.slice(1, -1).replace(/\\"/g, '"');
+      value = value.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
     }
     metadata[item[1].toLowerCase()] = value;
   }
-  return metadata;
+  return {
+    metadata,
+    contentMarkdown: markdown.slice(matched[0].length).trim().slice(0, 100_000)
+  };
+}
+
+// Retain the old exported parsing helper for compatibility with prototype tests.
+export function parseDefuddleFrontmatter(markdown) {
+  return parseDefuddleResponse(markdown)?.metadata || null;
+}
+
+export function firstArticleImage(markdown, pageUrl) {
+  if (!markdown) return '';
+  // Prefer an image from Defuddle's actual cleaned article Markdown.
+  const links = /!\[[^\]]{0,200}\]\(\s*(?:<([^>]+)>|([^\s)]+))(?:\s+["'][^"']*["'])?\s*\)/g;
+  for (const match of markdown.matchAll(links)) {
+    const raw = match[1] || match[2] || '';
+    const safe = safeImageUrl(raw, pageUrl);
+    if (!safe) continue;
+    const pathname = new URL(safe).pathname.toLowerCase();
+    if (/\.(?:svg|ico)(?:$|\?)/i.test(pathname) || /(?:favicon|avatar|badge|sprite|tracking|pixel|logo)/i.test(pathname)) continue;
+    return safe;
+  }
+  return '';
 }
 
 export function parsePublicationDate(value) {
   if (!value) return '';
   const match = String(value).match(/(\d{4}-\d{2}-\d{2})(?!\d)/);
   if (!match) return '';
-  const date = new Date(`${match[1]}T00:00:00Z`);
+  const date = new Date(match[1] + 'T00:00:00Z');
   return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(match[1]) ? match[1] : '';
 }
 
-// One optional hosted metadata provider, with no app-managed backend or API key.
-// Failures leave the immediately saved bookmark intact with a readable fallback.
 export async function getMetadata(urlString, sharedTitle = '') {
   const basic = fallbackMetadata(urlString, sharedTitle);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
+  const checkedAt = new Date().toISOString();
   try {
     const response = await fetch('https://defuddle.md/' + urlString, {
       mode: 'cors', credentials: 'omit', signal: controller.signal
     });
-    if (!response.ok) throw new Error('Defuddle HTTP ' + response.status);
-    const metadata = parseDefuddleFrontmatter(await response.text());
-    if (!metadata || ![metadata.title, metadata.description, metadata.author, metadata.site].some(Boolean)) {
-      return basic;
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const parsed = parseDefuddleResponse(await response.text());
+    if (!parsed) throw new Error('No readable metadata returned');
+    const {metadata, contentMarkdown} = parsed;
+    if (![metadata.title, metadata.description, metadata.author].some(Boolean) && !contentMarkdown) {
+      throw new Error('No useful article content returned');
     }
     return {
       ...basic,
@@ -106,12 +130,16 @@ export async function getMetadata(urlString, sharedTitle = '') {
       author: String(metadata.author || '').trim().slice(0, 300),
       siteName: String(metadata.site || metadata.domain || basic.siteName).trim().slice(0, 200),
       published: parsePublicationDate(metadata.published),
-      // The hosted response omits favicon and hero image; preserve local fallbacks.
-      metadataSource: 'defuddle-api'
+      image: firstArticleImage(contentMarkdown, urlString) || basic.image,
+      // YouTube's predictable thumbnail remains the only domain-specific fallback.
+      contentMarkdown,
+      metadataSource: 'defuddle-api',
+      metadataCheckedAt: checkedAt,
+      metadataError: ''
     };
   } catch (error) {
-    console.warn('Defuddle metadata unavailable:', error);
-    return basic;
+    const reason = error.name === 'AbortError' ? 'Request timed out' : (error.message || 'Request failed');
+    return {...basic, metadataCheckedAt: checkedAt, metadataError: reason};
   } finally {
     clearTimeout(timeout);
   }
