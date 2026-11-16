@@ -1,6 +1,6 @@
 import { listBookmarks, getBookmark, getByUrl, saveBookmark, deleteBookmark } from './db.js';
 import { normalizeUrl, safeImageUrl, fallbackMetadata, getMetadata, urlFromShare, parsePublicationDate } from './metadata.js';
-import { coverIdentity, coverImage, isLocalCover } from './cover.js';
+import { coverImage, isLocalCover } from './cover.js';
 import { mergeEnrichment } from './refresh.js';
 
 const $ = id => document.getElementById(id);
@@ -50,22 +50,11 @@ function filteredBookmarks() {
 }
 
 function coverMarkup(bookmark) {
-  const cover = coverIdentity(bookmark);
+  // No synthetic cover graphic: keep the frame empty if no image was extracted.
   const photo = coverImage(bookmark);
-  const icon = safeImageUrl(bookmark.favicon, bookmark.url);
-  const favicon = icon ? `<img class="simple-cover-favicon" src="${escapeHtml(icon)}" loading="lazy" referrerpolicy="no-referrer" alt="" />` : '';
-  return `<div class="preview" aria-label="Cover for ${escapeHtml(cover.title)}">
-    <div class="preview-art simple-cover">
-      <div class="simple-cover-identity">
-        <div class="simple-cover-icon">
-          ${favicon}<span class="simple-cover-favicon-fallback" aria-hidden="true">${escapeHtml((cover.host[0] || 'L').toUpperCase())}</span>
-        </div>
-        <span class="simple-cover-domain" title="${escapeHtml(cover.host)}">${escapeHtml(cover.host)}</span>
-      </div>
-      <div class="simple-cover-title">${escapeHtml(cover.title)}</div>
-    </div>
-    ${photo ? `<img class="preview-image" src="${escapeHtml(photo)}" loading="lazy" referrerpolicy="no-referrer" alt="" />` : ''}
-  </div>`;
+  return `<div class="preview">${photo
+    ? `<img class="preview-image" src="${escapeHtml(photo)}" loading="lazy" referrerpolicy="no-referrer" alt="" />`
+    : ''}</div>`;
 }
 
 function cardHtml(b) {
