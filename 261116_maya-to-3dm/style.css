@@ -109,3 +109,7 @@ h1,h2,p {margin:0}
   .view-footer{display:none}
   .viewer-tools{gap:6px;}
 }
+
+.choice {display:flex;align-items:center;gap:6px;color:var(--muted);font-size:11px;}
+.choice select {border:1px solid var(--line);border-radius:6px;background:var(--surface-high);
+ color:var(--fg);font-size:11px;padding:7px 8px;cursor:pointer;}

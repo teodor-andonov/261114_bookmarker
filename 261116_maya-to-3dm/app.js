@@ -2,6 +2,7 @@ import * as THREE from "three";
 import {OrbitControls} from "three/addons/controls/OrbitControls.js";
 import {parseMayaAscii} from "./maya-parser.js";
 import {exportMesh3dm} from "./rhino-export.js";
+import {prepareMeshes} from "./subdivide.js";
 
 const $ = id => document.getElementById(id);
 const canvas = $("viewport");
@@ -25,9 +26,8 @@ scene.add(sun);
 
 const modelGroup = new THREE.Group();
 scene.add(modelGroup);
-let parsed = null, currentName = "maya-geometry.ma";
+let parsed = null, baked = null, sourceText = "", currentName = "maya-geometry.ma";
 let edgeHelpers = [];
-let cameraExtent = 10;
 
 function clearModel() {
   for (const child of [...modelGroup.children]) {
@@ -40,47 +40,43 @@ function clearModel() {
 }
 
 function addMesh(object) {
-  const faces = [], edgePairs = new Set(), edges = [];
-  for (const polygon of object.faces) {
-    for (let i = 1; i < polygon.length - 1; i++) {
-      for (const index of [polygon[0], polygon[i], polygon[i + 1]])
-        faces.push(...object.vertices[index]);
-    }
-    for (let i = 0; i < polygon.length; i++) {
-      const a = polygon[i], b = polygon[(i + 1) % polygon.length];
-      const key = Math.min(a,b) + ":" + Math.max(a,b);
-      if (!edgePairs.has(key)) {
-        edgePairs.add(key);
-        edges.push(...object.vertices[a], ...object.vertices[b]);
-      }
+  const geometry=new THREE.BufferGeometry();
+  geometry.setAttribute("position",new THREE.Float32BufferAttribute(object.vertices.flat(),3));
+  const indices=[],edges=new Set(),lines=[];
+  for(const face of object.faces) {
+    for(let i=1;i<face.length-1;i++)indices.push(face[0],face[i],face[i+1]);
+    if($("wireframe").checked)for(let i=0;i<face.length;i++){
+      const a=face[i],b=face[(i+1)%face.length];
+      const id=Math.min(a,b)+":"+Math.max(a,b);
+      if(edges.has(id))continue;
+      edges.add(id);
+      lines.push(...object.vertices[a],...object.vertices[b]);
     }
   }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(faces, 3));
+  geometry.setIndex(indices);
   geometry.computeVertexNormals();
-  const surface = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
-    color: 0x8aa5b3, side: THREE.DoubleSide, metalness: 0.1,
-    roughness: 0.82, flatShading: true
+  const mesh=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({
+    color:0x8aa5b3,side:THREE.DoubleSide,metalness:0.04,
+    roughness:0.82,flatShading:false
   }));
-  surface.name = object.name;
-  modelGroup.add(surface);
-  const edgeGeometry = new THREE.BufferGeometry();
-  edgeGeometry.setAttribute("position", new THREE.Float32BufferAttribute(edges, 3));
-  const lines = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({
-    color: 0x16252f, transparent: true, opacity: 0.86
-  }));
-  lines.visible = $("wireframe").checked;
-  edgeHelpers.push(lines);
-  modelGroup.add(lines);
+  mesh.name=object.name;
+  modelGroup.add(mesh);
+  if(lines.length){
+    const wire=new THREE.BufferGeometry();
+    wire.setAttribute("position",new THREE.Float32BufferAttribute(lines,3));
+    const helper=new THREE.LineSegments(wire,new THREE.LineBasicMaterial({
+      color:0x16252f,transparent:true,opacity:0.8
+    }));
+    edgeHelpers.push(helper);
+    modelGroup.add(helper);
+  }
 }
-
 function fitView() {
   if (!modelGroup.children.length) return;
   const bounds = new THREE.Box3().setFromObject(modelGroup);
   const center = bounds.getCenter(new THREE.Vector3());
   const size = bounds.getSize(new THREE.Vector3());
   const radius = Math.max(size.length() / 2, 0.01);
-  cameraExtent = radius;
   camera.position.copy(center).add(new THREE.Vector3(radius*1.7, -radius*2, radius*1.3));
   camera.near = Math.max(radius / 10000, 0.0001);
   camera.far = Math.max(radius * 2000, 1000);
@@ -91,19 +87,19 @@ function fitView() {
 
 function renderObjects() {
   clearModel();
-  if (!parsed) return;
-  for (const object of parsed.objects) addMesh(object);
+  if (!baked) return;
+  for (const object of baked.objects) addMesh(object);
   fitView();
 }
 
 function safeText(element, value) { element.textContent = String(value); }
 
 function showResults() {
-  const objects = parsed.objects;
+  const objects = baked.objects;
   safeText($("object-count"), objects.length);
   safeText($("face-count"), objects.reduce((s,o) => s + o.faces.length, 0));
-  safeText($("quad-count"), objects.reduce((s,o) => s + o.quads, 0));
-  safeText($("unit-label"), parsed.unit);
+  safeText($("quad-count"), objects.reduce((s,o) => s + o.faces.filter(f=>f.length===4).length, 0));
+  safeText($("unit-label"), baked.unit);
   safeText($("geometry-count"), objects.length + " meshes");
   $("objects").replaceChildren();
   for (const object of objects) {
@@ -117,17 +113,16 @@ function showResults() {
     name.textContent = object.name;
     const detail = document.createElement("div");
     detail.className = "subtle";
-    detail.textContent = object.vertices.length + " vertices · " + object.faces.length +
-      " faces · " + object.quads + " quads";
+    detail.textContent = object.vertices.length + " vertices · " + object.faces.length + " faces";
     body.append(name, detail);
     const flag = document.createElement("span");
     flag.className = "chip";
-    flag.textContent = object.smoothPreview ? "Smooth preview" : "Polygon";
+    flag.textContent = object.appliedLevels + "× smooth";
     row.append(dot, body, flag);
     $("objects").append(row);
   }
   if (!objects.length) $("objects").textContent = "No supported mesh cages found.";
-  $("warnings").hidden = parsed.warnings.length === 0;
+  $("warnings").hidden = baked.warnings.length === 0;
   $("warnings").replaceChildren();
   if (parsed.warnings.length) {
     const title = document.createElement("strong");
@@ -142,7 +137,7 @@ function showResults() {
   $("export-button").disabled = objects.length === 0;
   $("empty").hidden = objects.length > 0;
   safeText($("status"), objects.length ?
-    "Geometry loaded · export is ready" : "No geometry found in this Maya file.");
+    "Subdivided meshes ready · export .3dm" : "No geometry found in this Maya file.");
   $("status").dataset.kind = objects.length ? "ok" : "warning";
 }
 
@@ -160,11 +155,10 @@ async function openFile(file) {
   safeText($("status"), "Parsing geometry…");
   $("export-button").disabled = true;
   try {
-    parsed = parseMayaAscii(await file.text());
-    renderObjects();
-    showResults();
+    sourceText = await file.text();
+    refreshAxis();
   } catch (error) {
-    parsed = null;
+    parsed = null; baked = null;
     clearModel();
     $("empty").hidden = false;
     safeText($("status"), error.message || String(error));
@@ -172,6 +166,17 @@ async function openFile(file) {
   }
 }
 
+function rebuild(){
+  if(!parsed)return;
+  baked=prepareMeshes(parsed,$("detail").value);
+  renderObjects();
+  showResults();
+}
+function refreshAxis(){
+  if(!sourceText)return;
+  parsed=parseMayaAscii(sourceText,{upAxis:$("axis").value});
+  rebuild();
+}
 function download(data, filename, mime) {
   const url = URL.createObjectURL(new Blob([data], {type: mime}));
   const link = document.createElement("a");
@@ -197,36 +202,27 @@ for (const eventName of ["dragleave","drop"]) drop.addEventListener(eventName, e
   drop.classList.remove("dragging");
 });
 drop.addEventListener("drop", event => openFile(event.dataTransfer.files?.[0]));
-$("wireframe").addEventListener("change", event => {
-  for (const lines of edgeHelpers) lines.visible = event.target.checked;
-});
+$("wireframe").addEventListener("change",renderObjects);
+$("detail").addEventListener("change",rebuild);
+$("axis").addEventListener("change",refreshAxis);
 $("fit-button").addEventListener("click", fitView);
 $("export-button").addEventListener("click", async () => {
-  if (!parsed?.objects.length) return;
+  if (!baked?.objects.length) return;
   const button = $("export-button");
   button.disabled = true;
   button.textContent = "Writing 3DM…";
   try {
-    const bytes = await exportMesh3dm(parsed);
+    const {bytes,exported,skipped} = await exportMesh3dm(baked);
     download(bytes, currentName.replace(/\.ma$/i,"") + ".3dm", "application/octet-stream");
-    safeText($("status"), "Exported and verified .3dm (" + (bytes.length / 1024).toFixed(1) + " KB)");
-    $("status").dataset.kind = "ok";
+    safeText($("status"), "Exported "+exported+" meshes · "+skipped.length+" skipped · "+(bytes.length/1024).toFixed(1)+" KB");
+    $("status").dataset.kind = skipped.length ? "warning" : "ok";
+    if(skipped.length){baked.warnings.push(...skipped); showResults(); safeText($("status"),"Exported "+exported+" meshes · "+skipped.length+" skipped");}
   } catch (error) {
     safeText($("status"), error.message || String(error));
     $("status").dataset.kind = "error";
   } finally {
-    button.disabled = !parsed?.objects.length;
+    button.disabled = !baked?.objects.length;
     button.textContent = "Export .3dm";
-  }
-});
-$("script-button").addEventListener("click", async () => {
-  try {
-    const result = await fetch("./rhino-subd.py");
-    if (!result.ok) throw new Error("Could not load the Rhino script.");
-    download(await result.text(), "maya_meshes_to_subd.py", "text/x-python");
-  } catch (error) {
-    safeText($("status"), error.message || String(error));
-    $("status").dataset.kind = "error";
   }
 });
 const resize = () => {

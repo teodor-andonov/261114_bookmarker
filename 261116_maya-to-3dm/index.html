@@ -14,14 +14,19 @@
         <div class="mark">M<span>→</span>R</div>
         <div>
           <h1>Maya → Rhino</h1>
-          <p>Geometry-only ASCII to 3DM</p>
+          <p>Baked polygon meshes · .ma to .3dm</p>
         </div>
       </div>
       <div class="top-actions">
         <label class="button primary upload-button" for="file-input">Open .ma</label>
         <input id="file-input" type="file" accept=".ma,text/plain" hidden>
-        <button class="button" id="export-button" disabled>Export .3dm</button>
-        <button class="button" id="script-button" title="Use inside Rhino 8 or 9 to convert mesh cages to native SubD">Get SubD script</button>
+        <label class="choice">Detail <select id="detail" aria-label="Subdivision detail">
+ <option value="maya" selected>As Maya</option><option value="0">Original</option><option value="1">1 · Low</option>
+ <option value="2">2 · Medium</option><option value="3">3 · High</option>
+ </select></label><label class="choice">Source up <select id="axis" aria-label="Source up axis">
+ <option value="auto">Auto</option><option value="y">Y-up</option><option value="z">Z-up</option>
+ </select></label><button class="button" id="export-button" disabled>Export .3dm</button>
+        
       </div>
     </header>
     <div class="workspace">
@@ -30,12 +35,12 @@
         <div class="empty" id="empty">
           <div class="drop-icon">⬡</div>
           <h2>Drop a Maya ASCII file</h2>
-          <p>Read polygon control cages, preview them, export a geometry-only Rhino 3DM.</p>
+          <p>Preview subdivided polygon meshes and export the same geometry to Rhino.</p>
           <label class="button primary" for="file-input">Choose .ma file</label>
         </div>
         <div class="viewer-tools">
-          <span class="view-mode">CONTROL CAGE</span>
-          <label class="toggle"><input type="checkbox" id="wireframe" checked> Edges</label>
+          <span class="view-mode">SMOOTHED MESH</span>
+          <label class="toggle"><input type="checkbox" id="wireframe"> Edges</label>
           <button id="fit-button" title="Fit geometry" aria-label="Fit geometry">Fit view</button>
         </div>
         <div class="view-footer">Drag to orbit · Scroll to zoom · Right-drag to pan</div>
@@ -56,11 +61,9 @@
         <div class="list-head"><span>GEOMETRY</span><span id="geometry-count"></span></div>
         <div id="objects" class="object-list"><p class="quiet">Imported meshes will appear here.</p></div>
         <div id="warnings" class="warnings" hidden></div>
-        <div class="workflow">
-          <div class="eyebrow">SUBD WORKFLOW</div>
-          <p>The .3dm contains original polygon cages, not tessellated smooth previews.</p>
-          <p>For <strong>native editable Rhino SubD</strong>: open the .3dm in Rhino, run the downloaded Python script using <code>_RunPythonScript</code>, then Save As.</p>
-          <p class="subtle">Maya construction history and edge creases are not evaluated. Meshes with N-gons are triangulated.</p>
+        <div class="workflow"><div class="eyebrow">OUTPUT</div>
+          <p>Exports baked <strong>polygon meshes</strong> to 3DM, not SubD objects.</p>
+          <p class="subtle">Uses available Maya polygon cages and stored crease weights. Maya's procedural history is not evaluated.</p>
         </div>
       </aside>
     </div>
