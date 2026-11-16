@@ -11,13 +11,9 @@ export function coverIdentity(bookmark) {
   return { host, title: String(bookmark.title || host).trim().slice(0, 180) };
 }
 
+// Single cover strategy: extracted article image or the neutral favicon/title/domain graphic.
+// Legacy manual cover fields remain in IndexedDB/JSON backups but are no longer rendered.
 export function coverImage(bookmark) {
-  const mode = ['auto','graphic','custom'].includes(bookmark.coverMode) ? bookmark.coverMode : 'auto';
-  if (mode === 'graphic') return '';
-  if (mode === 'custom') {
-    if (isLocalCover(bookmark.coverData)) return bookmark.coverData;
-    return validHttpImage(bookmark.customCoverUrl, bookmark.url);
-  }
   return validHttpImage(bookmark.image, bookmark.url);
 }
 

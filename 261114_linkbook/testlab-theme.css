@@ -65,3 +65,17 @@
 :root[data-theme="dark"] .detail-dialog::backdrop {background:#000b}
 :root[data-theme="dark"] .empty-state h2 {color:#e3ece5}
 :root[data-theme="dark"] .empty-state {color:#aebeb2}
+
+
+:root[data-theme="dark"] .commands-dialog{background:#232d27;color:#e7f0e8;border-color:#44564a;box-shadow:0 30px 100px #000a}
+:root[data-theme="dark"] .commands-heading span,
+:root[data-theme="dark"] .command-help {color:#acbbae}
+:root[data-theme="dark"] .command-search {background:#19241e;color:#e8f0ea;border-color:#4a5a4f}
+:root[data-theme="dark"] .command-option {color:#e8f0ea}
+:root[data-theme="dark"] .command-option small {color:#a9b9ac}
+:root[data-theme="dark"] .command-option:hover,
+:root[data-theme="dark"] .command-option.active {background:#394a3e}
+:root[data-theme="dark"] .command-help{border-color:#44564a}
+:root[data-theme="dark"] .input-submit-hint,
+:root[data-theme="dark"] .card-hint{color:#a9b7aa}
+:root[data-theme="dark"] .dialog-fields textarea[readonly]{background:#1a2420;color:#c8d6cb}

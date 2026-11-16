@@ -1,19 +1,22 @@
 import { listBookmarks, getBookmark, getByUrl, saveBookmark, deleteBookmark } from './db.js';
 import { normalizeUrl, safeImageUrl, fallbackMetadata, getMetadata, urlFromShare, parsePublicationDate } from './metadata.js';
 import { coverIdentity, coverImage, isLocalCover } from './cover.js';
+import { mergeEnrichment } from './refresh.js';
 
 const $ = id => document.getElementById(id);
 const els = {
-  addForm: $('addForm'), url: $('urlInput'), addButton: $('addButton'), message: $('message'),
-  count: $('totalCount'), search: $('searchInput'), sort: $('sortSelect'), tags: $('tagFilters'),
+  addForm: $('addForm'), url: $('urlInput'), message: $('message'),
+  count: $('totalCount'), search: $('searchInput'), sort: $('sortSelect'),
   list: $('bookmarkList'), empty: $('emptyState'), emptyTitle: $('emptyTitle'), emptyDescription: $('emptyDescription'),
-  gridButton: $('gridButton'), listButton: $('listButton'), exportButton: $('exportButton'), importButton: $('importButton'), importFile: $('importFile'),
-  dialog: $('detailDialog'), detailForm: $('detailForm'), closeDialog: $('closeDialog'), deleteButton: $('deleteButton'),
-  refreshButton: $('refreshButton'), metadataStatus: $('detailMetadataStatus'),
-  coverPreview: $('coverEditorPreview'), coverUpload: $('coverUpload'), clearCover: $('clearCoverButton')
+  commandsButton: $('commandsButton'), commandsDialog: $('commandsDialog'),
+  commandSearch: $('commandSearch'), commandResults: $('commandResults'),
+  importFile: $('importFile'),
+  dialog: $('detailDialog'), detailForm: $('detailForm'), metadataStatus: $('detailMetadataStatus')
 };
-
-const state = { bookmarks: [], view: getSavedView(), selectedTag: '', selectedId: null, loading: false, coverUploadData: '' };
+const state = {
+  bookmarks: [], view: getSavedView(), selectedTag: '', selectedId: null,
+  loading: false, refreshing: false, stopRefresh: false
+};
 
 function getSavedView() {
   try { return localStorage.getItem('linkbook-view') === 'list' ? 'list' : 'grid'; }
@@ -34,7 +37,7 @@ function filteredBookmarks() {
   const matched = state.bookmarks.filter(b => {
     if (state.selectedTag && !(b.tags || []).includes(state.selectedTag)) return false;
     if (!needle) return true;
-    return [b.url, b.title, b.description, b.siteName, b.author, b.notes, ...(b.tags || [])].some(v => String(v || '').toLocaleLowerCase().includes(needle));
+    return [b.url, b.title, b.description, b.siteName, b.author, b.notes, b.contentMarkdown, ...(b.tags || [])].some(v => String(v || '').toLocaleLowerCase().includes(needle));
   });
   const sort = els.sort.value;
   matched.sort((a, b) => {
@@ -45,9 +48,6 @@ function filteredBookmarks() {
   });
   return matched;
 }
-
-const editIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16 4a2 2 0 0 1 3 3L9 17l-4 1 1-4L16 4Z"/></svg>';
-const externalIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9"/><path d="M20 13v7H4V4h7"/></svg>';
 
 function coverMarkup(bookmark) {
   const cover = coverIdentity(bookmark);
@@ -72,37 +72,31 @@ function cardHtml(b) {
   const domain = domainOf(b.url);
   const hasPhoto = Boolean(coverImage(b));
   const icon = safeImageUrl(b.favicon, b.url);
-  const favicon = icon ? `<img class="favicon" src="${escapeHtml(icon)}" loading="lazy" referrerpolicy="no-referrer" alt="" />` : '<span class="favicon is-hidden"></span>';
-  const tags = (b.tags || []).slice(0, 3).map(tag => `<span class="inline-tag">${escapeHtml(tag)}</span>`).join('');
-  return `<article class="bookmark-card ${hasPhoto ? '' : 'no-cover-image'}" data-id="${escapeHtml(b.id)}">
-    ${coverMarkup(b)}
-    <div class="bookmark-body">
-      <div class="bookmark-meta">${favicon}<span class="favicon-fallback">${escapeHtml((domain[0] || 'L').toUpperCase())}</span><span class="domain" title="${escapeHtml(domain)}">${escapeHtml(b.siteName || domain)}</span></div>
-      <h3 title="${escapeHtml(b.title)}">${escapeHtml(b.title || domain)}</h3>
-      <p class="description">${escapeHtml(b.description || 'Saved for later')}</p>
-      ${tags ? `<div class="inline-tags">${tags}</div>` : ''}
-      <div class="bookmark-foot"><span class="date-added">${escapeHtml(displayDate(b.createdAt))}</span><div class="card-actions"><button type="button" class="tiny-action" data-action="edit" title="Edit bookmark" aria-label="Edit ${escapeHtml(b.title)}">${editIcon}</button><a class="tiny-action" href="${escapeHtml(b.url)}" target="_blank" rel="noopener noreferrer" title="Open page" aria-label="Open ${escapeHtml(b.title)}">${externalIcon}</a></div></div>
-    </div>
-  </article>`;
+  const favicon = icon
+    ? '<img class="favicon" src="' + escapeHtml(icon) + '" loading="lazy" referrerpolicy="no-referrer" alt="" />'
+    : '<span class="favicon is-hidden"></span>';
+  const tags = (b.tags || []).slice(0, 3).map(tag => '<span class="inline-tag">' + escapeHtml(tag) + '</span>').join('');
+  return '<article class="bookmark-card ' + (hasPhoto ? '' : 'no-cover-image') + '" data-id="' + escapeHtml(b.id) + '" tabindex="0" role="button" aria-label="Edit details: ' + escapeHtml(b.title) + '">' +
+    '<a class="bookmark-cover-link" href="' + escapeHtml(b.url) + '" target="_blank" rel="noopener noreferrer" aria-label="Open ' + escapeHtml(b.title) + '">' + coverMarkup(b) + '</a>' +
+    '<div class="bookmark-body">' +
+      '<div class="bookmark-meta">' + favicon + '<span class="favicon-fallback">' + escapeHtml((domain[0] || 'L').toUpperCase()) + '</span><span class="domain">' + escapeHtml(domain) + '</span></div>' +
+      '<h3 title="' + escapeHtml(b.title) + '">' + escapeHtml(b.title || domain) + '</h3>' +
+      '<p class="description">' + escapeHtml(b.description || 'Saved for later') + '</p>' +
+      (tags ? '<div class="inline-tags">' + tags + '</div>' : '') +
+      '<div class="bookmark-foot"><span class="date-added">' + escapeHtml(displayDate(b.createdAt)) +
+      '</span><span class="card-hint">Select to edit · Cover to open</span></div>' +
+    '</div></article>';
 }
 
-function renderTags() {
-  const totals = new Map();
-  for (const bookmark of state.bookmarks) for (const tag of bookmark.tags || []) totals.set(tag, (totals.get(tag) || 0) + 1);
-  if (state.selectedTag && !totals.has(state.selectedTag)) state.selectedTag = '';
-  const items = [...totals].sort(([a], [b]) => a.localeCompare(b));
-  els.tags.innerHTML = items.length ? `<button class="tag-filter ${state.selectedTag === '' ? 'selected' : ''}" type="button" data-tag="">All <span class="tag-count">${state.bookmarks.length}</span></button>` + items.map(([tag,count]) => `<button type="button" class="tag-filter ${state.selectedTag === tag ? 'selected' : ''}" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)} <span class="tag-count">${count}</span></button>`).join('') : '';
+function availableTags() {
+  return [...new Set(state.bookmarks.flatMap(bookmark => bookmark.tags || []))].sort((a,b)=>a.localeCompare(b));
 }
 
 function render() {
   els.count.textContent = String(state.bookmarks.length);
-  renderTags();
+  if (state.selectedTag && !availableTags().includes(state.selectedTag)) state.selectedTag = '';
   const bookmarks = filteredBookmarks();
   els.list.className = state.view === 'list' ? 'bookmark-grid list-view' : 'bookmark-grid';
-  els.gridButton.classList.toggle('active', state.view === 'grid');
-  els.listButton.classList.toggle('active', state.view === 'list');
-  els.gridButton.setAttribute('aria-pressed', String(state.view === 'grid'));
-  els.listButton.setAttribute('aria-pressed', String(state.view === 'list'));
   els.list.innerHTML = bookmarks.map(cardHtml).join('');
   els.empty.hidden = bookmarks.length !== 0;
   if (state.bookmarks.length === 0) {
@@ -115,17 +109,18 @@ function render() {
 }
 
 async function enrichBookmark(bookmark, sharedTitle) {
-  try {
-    const enriched = await getMetadata(bookmark.url, sharedTitle);
-    if (enriched.metadataSource === 'basic') return;
-    const current = await getBookmark(bookmark.id);
-    if (!current || current.updatedAt !== bookmark.updatedAt) return; // Never overwrite a newer user edit.
-    await saveBookmark({ ...current, ...enriched });
+  const enriched = await getMetadata(bookmark.url, sharedTitle);
+  const current = await getBookmark(bookmark.id);
+  if (!current || current.updatedAt !== bookmark.updatedAt) return;
+  if (enriched.metadataSource === 'basic') {
+    await saveBookmark(mergeEnrichment(current, enriched));
     await reload();
-    notify('Saved locally with page metadata.', 'success');
-  } catch (error) {
-    console.warn('Optional metadata extraction failed:', error);
+    notify('Link saved. Metadata unavailable: ' + (enriched.metadataError || 'No article found'), 'error');
+    return;
   }
+  await saveBookmark(mergeEnrichment(current, enriched));
+  await reload();
+  notify(enriched.image ? 'Link enriched with article text and image.' : 'Link enriched with text; no usable article image found.', 'success');
 }
 
 async function createBookmark(rawUrl, sharedTitle = '') {
@@ -139,65 +134,27 @@ async function createBookmark(rawUrl, sharedTitle = '') {
   };
   await saveBookmark(bookmark);
   await reload();
-  notify('Saved locally. Additional metadata is best effort; you can edit details at any time.', 'success');
+  notify('Saved locally. Fetching article metadata and text via Defuddle…', 'success');
   // Save first; attempt metadata enrichment without blocking the Add button.
-  void enrichBookmark(bookmark, sharedTitle);
+  void enrichBookmark(bookmark, sharedTitle).catch(error => notify('Metadata could not be saved: '+error.message,'error'));
   return true;
 }
 
 function formControl(name) { return els.detailForm.elements.namedItem(name); }
-function coverDraft() {
-  const original = state.bookmarks.find(b => b.id === state.selectedId);
-  return {
-    ...original,
-    title: formControl('title').value || original?.title || '',
-    coverMode: formControl('coverMode').value,
-    customCoverUrl: formControl('customCoverUrl').value,
-    coverData: state.coverUploadData
-  };
-}
-function updateCoverPreview() {
-  if (state.selectedId) {
-    els.coverPreview.innerHTML = coverMarkup(coverDraft());
-    // If an image fails, reveal the neutral text/favicon cover.
-    const img = els.coverPreview.querySelector('.preview-image');
-    if (img) img.addEventListener('error', () => img.classList.add('is-hidden'));
-  }
-}
+
 function fillEditor(bookmark) {
   state.selectedId = bookmark.id;
-  state.coverUploadData = isLocalCover(bookmark.coverData) ? bookmark.coverData : '';
-  for (const name of ['title', 'url', 'description', 'author', 'published', 'image', 'notes']) formControl(name).value = bookmark[name] || '';
+  for (const name of ['title', 'url', 'description', 'author', 'published', 'notes']) {
+    formControl(name).value = bookmark[name] || '';
+  }
   formControl('tags').value = (bookmark.tags || []).join(', ');
-  formControl('coverMode').value = ['auto','graphic','custom'].includes(bookmark.coverMode) ? bookmark.coverMode : 'auto';
-  formControl('customCoverUrl').value = bookmark.customCoverUrl || '';
-  els.coverUpload.value = '';
-  els.metadataStatus.textContent = bookmark.metadataSource === 'basic'
-    ? 'No metadata fetched yet. Linkbook uses Defuddle for optional metadata and saves your links locally.'
-    : `Metadata source: ${bookmark.metadataSource === 'defuddle-api' ? 'Defuddle hosted API' : 'previous source'}. Custom covers survive metadata refresh.`;
-  updateCoverPreview();
-}
-
-async function resizeCover(file) {
-  const allowed = ['image/jpeg', 'image/png', 'image/webp'];
-  if (!allowed.includes(file.type)) throw new Error('Upload a PNG, JPEG, or WebP image.');
-  if (file.size > 10_000_000) throw new Error('Image is too large; choose one under 10 MB.');
-  let bitmap;
-  try { bitmap = await createImageBitmap(file); }
-  catch { throw new Error('Could not read this image. Try PNG or JPEG.'); }
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1000; canvas.height = 630;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Canvas image conversion is unavailable.');
-    const crop = Math.min(bitmap.width / canvas.width, bitmap.height / canvas.height);
-    const width = canvas.width * crop, height = canvas.height * crop;
-    ctx.drawImage(bitmap, (bitmap.width-width)/2, (bitmap.height-height)/2, width, height, 0, 0, canvas.width, canvas.height);
-    let data = canvas.toDataURL('image/webp', .76);
-    if (!data.startsWith('data:image/webp;')) data = canvas.toDataURL('image/jpeg', .75);
-    if (!isLocalCover(data)) throw new Error('Converted image is still too large. Try a smaller photo.');
-    return data;
-  } finally { bitmap.close?.(); }
+  formControl('contentMarkdown').value = bookmark.contentMarkdown || '';
+  const source = bookmark.metadataSource === 'defuddle-api'
+    ? 'Defuddle · ' + (bookmark.image ? 'article image available' : 'no article image') +
+      ' · ' + (bookmark.contentMarkdown ? 'full text stored locally' : 'no text extracted')
+    : 'No successful Defuddle extraction yet';
+  els.metadataStatus.textContent = source +
+    (bookmark.metadataError ? ' · Last error: ' + bookmark.metadataError : '');
 }
 
 async function openEditor(id) {
@@ -209,60 +166,35 @@ async function openEditor(id) {
   } catch (error) { notify(error.message, 'error'); }
 }
 
+// A URL is saved with Enter; operational actions live in the command palette.
 els.addForm.addEventListener('submit', async event => {
   event.preventDefault();
   if (state.loading) return;
-  state.loading = true; els.addButton.disabled = true;
+  state.loading = true;
   try { const saved = await createBookmark(els.url.value); if (saved) els.url.value = ''; }
   catch (error) { notify(error.message || 'Unable to save this link.', 'error'); }
-  finally { state.loading = false; els.addButton.disabled = false; }
+  finally { state.loading = false; }
 });
 
 els.list.addEventListener('click', event => {
-  const button = event.target.closest('button[data-action="edit"]');
-  if (!button) return;
-  const id = button.closest('.bookmark-card')?.dataset.id;
-  if (id) openEditor(id);
+  if (event.target.closest('a')) return; // Image opens the original URL.
+  const id = event.target.closest('.bookmark-card')?.dataset.id;
+  if (id) void openEditor(id);
+});
+els.list.addEventListener('keydown', event => {
+  if (event.key !== 'Enter' || event.target !== event.target.closest('.bookmark-card')) return;
+  event.preventDefault();
+  const id = event.target.dataset.id;
+  if (id) void openEditor(id);
 });
 els.list.addEventListener('error', event => {
   if (event.target instanceof HTMLImageElement) event.target.classList.add('is-hidden');
 }, true);
-els.tags.addEventListener('click', event => {
-  const button = event.target.closest('button[data-tag]');
-  if (!button) return;
-  state.selectedTag = button.dataset.tag || '';
-  render();
-});
 els.search.addEventListener('input', render);
 els.sort.addEventListener('change', render);
-for (const [view, button] of [['grid', els.gridButton], ['list', els.listButton]]) {
-  button.addEventListener('click', () => { state.view = view; saveView(view); render(); });
-}
-els.closeDialog.addEventListener('click', () => els.dialog.close());
-els.dialog.addEventListener('click', event => { if (event.target === els.dialog) els.dialog.close(); });
-for (const field of ['title', 'coverMode', 'customCoverUrl']) {
-  formControl(field).addEventListener('input', updateCoverPreview);
-}
-els.coverUpload.addEventListener('change', async () => {
-  const file = els.coverUpload.files?.[0];
-  if (!file) return;
-  try {
-    els.metadataStatus.textContent = 'Optimising image locally…';
-    state.coverUploadData = await resizeCover(file);
-    formControl('coverMode').value = 'custom';
-    els.metadataStatus.textContent = 'Custom cover ready. Save changes to keep it with this bookmark.';
-    updateCoverPreview();
-  } catch (error) { els.metadataStatus.textContent = error.message; }
-  finally { els.coverUpload.value = ''; }
+els.dialog.addEventListener('click', event => {
+  if (event.target === els.dialog) els.dialog.close();
 });
-els.clearCover.addEventListener('click', () => {
-  state.coverUploadData = '';
-  formControl('customCoverUrl').value = '';
-  formControl('coverMode').value = 'graphic';
-  els.metadataStatus.textContent = 'Custom cover cleared. The simple cover will be used when you save.';
-  updateCoverPreview();
-});
-
 
 els.detailForm.addEventListener('submit', async event => {
   event.preventDefault();
@@ -275,54 +207,109 @@ els.detailForm.addEventListener('submit', async event => {
     const another = await getByUrl(url);
     if (another && another.id !== id) throw new Error('Another bookmark already uses that URL.');
     const tags = [...new Set(formControl('tags').value.split(',').map(x => x.trim()).filter(Boolean))].slice(0, 30);
+    const urlChanged = url !== current.url;
     const saved = {
-      ...current, url, title: formControl('title').value.trim().slice(0, 500),
+      ...current,
+      ...(urlChanged ? {...fallbackMetadata(url), contentMarkdown: '', metadataError: '', metadataCheckedAt: ''} : {}),
+      url, title: formControl('title').value.trim().slice(0, 500),
       description: formControl('description').value.trim().slice(0, 5000),
       author: formControl('author').value.trim().slice(0, 300),
       published: parsePublicationDate(formControl('published').value),
-      image: safeImageUrl(formControl('image').value, url),
-      coverMode: formControl('coverMode').value,
-      coverData: isLocalCover(state.coverUploadData) ? state.coverUploadData : '',
-      customCoverUrl: safeImageUrl(formControl('customCoverUrl').value, url),
-      tags, notes: formControl('notes').value.slice(0, 10000), updatedAt: new Date().toISOString()
+      tags, notes: formControl('notes').value.slice(0, 10000),
+      updatedAt: new Date().toISOString()
     };
     if (!saved.title) throw new Error('Title cannot be empty.');
-    if (saved.coverMode === 'custom' && !saved.coverData && !saved.customCoverUrl) throw new Error('For a custom cover, upload an image or enter an image URL.');
     await saveBookmark(saved);
     els.dialog.close();
     await reload();
-    notify('Bookmark updated.', 'success');
-  } catch (error) { notify(error.message, 'error'); els.metadataStatus.textContent = error.message; }
+    notify('Bookmark details saved.', 'success');
+    if (urlChanged) void enrichBookmark(saved);
+  } catch (error) {
+    notify(error.message, 'error');
+    els.metadataStatus.textContent = error.message;
+  }
 });
 
-els.deleteButton.addEventListener('click', async () => {
-  if (!state.selectedId || !confirm('Delete this bookmark from this browser?')) return;
-  try { await deleteBookmark(state.selectedId); els.dialog.close(); await reload(); notify('Bookmark deleted.', 'success'); }
-  catch (error) { notify(error.message, 'error'); }
-});
-
-els.refreshButton.addEventListener('click', async () => {
-  const id = state.selectedId;
-  if (!id) return;
-  els.refreshButton.disabled = true;
-  els.metadataStatus.textContent = 'Fetching metadata via Defuddle…';
+async function deleteSelectedBookmark() {
+  if (!state.selectedId || !confirm('Delete the selected bookmark from this browser?')) return;
   try {
-    const current = await getBookmark(id);
-    if (!current) return;
-    const result = await getMetadata(current.url);
-    if (result.metadataSource === 'basic') {
-      els.metadataStatus.textContent = 'Defuddle could not provide metadata (page unavailable, blocked or API limit reached).';
-      return;
-    }
-    // The refresh button deliberately re-fetches page fields, retaining local notes/tags.
-    const updated = { ...current, ...result, image: result.image || current.image || '', favicon: current.favicon || result.favicon, updatedAt: new Date().toISOString() };
-    await saveBookmark(updated); fillEditor(updated); await reload();
-    notify('Metadata refreshed.', 'success');
-  } catch (error) { els.metadataStatus.textContent = error.message; }
-  finally { els.refreshButton.disabled = false; }
-});
+    await deleteBookmark(state.selectedId);
+    state.selectedId = null;
+    els.dialog.close();
+    await reload();
+    notify('Bookmark deleted.', 'success');
+  } catch (error) { notify(error.message, 'error'); }
+}
 
-els.exportButton.addEventListener('click', async () => {
+// Refresh only automatically extracted fields; notes, tags and creation dates survive.
+// If a user edits a bookmark while a request is running, do not overwrite those edits.
+async function refreshBookmark(id) {
+  const current = await getBookmark(id);
+  if (!current) return {status: 'skipped'};
+  const result = await getMetadata(current.url);
+  const latest = await getBookmark(id);
+  if (!latest || latest.updatedAt !== current.updatedAt) return {status: 'skipped'};
+  if (result.metadataSource === 'basic') {
+    await saveBookmark(mergeEnrichment(latest, result));
+    return {status: 'failed', error: result.metadataError || 'No metadata returned'};
+  }
+  await saveBookmark(mergeEnrichment(latest, result));
+  return {status: 'updated', image: Boolean(result.image), content: Boolean(result.contentMarkdown)};
+}
+
+async function refreshSelectedBookmark() {
+  if (!state.selectedId) return;
+  const result = await refreshBookmark(state.selectedId);
+  await reload();
+  if (els.dialog.open) {
+    const current = await getBookmark(state.selectedId);
+    if (current) fillEditor(current);
+  }
+  notify(result.status === 'updated' ? 'Bookmark refreshed using Defuddle.' :
+    'Refresh did not update bookmark: ' + (result.error || result.status),
+    result.status === 'updated' ? 'success' : 'error');
+}
+
+async function refreshAllBookmarks() {
+  if (state.refreshing) return;
+  const ids = (await listBookmarks()).map(item => item.id);
+  if (!ids.length) { notify('No bookmarks to refresh.'); return; }
+  state.refreshing = true;
+  state.stopRefresh = false;
+  let updated = 0, failed = 0, skipped = 0, images = 0;
+  try {
+    for (let i = 0; i < ids.length; i++) {
+      if (state.stopRefresh) break;
+      notify('Refreshing ' + (i + 1) + '/' + ids.length + ' · ' +
+        updated + ' updated, ' + failed + ' failed');
+      const result = await refreshBookmark(ids[i]);
+      if (result.status === 'updated') { updated++; if (result.image) images++; }
+      else if (result.status === 'failed') {
+        failed++;
+        // Respect the hosted free-tier rate limit; do not keep hammering.
+        if (/HTTP 429/i.test(result.error || '')) {
+          state.stopRefresh = true;
+          notify('Defuddle rate limit reached; refresh stopped. ' + updated +
+            ' updated, ' + failed + ' failed.', 'error');
+        }
+      } else skipped++;
+      await reload();
+      if (i < ids.length - 1 && !state.stopRefresh) await new Promise(resolve => setTimeout(resolve, 350));
+    }
+  } catch (error) {
+    notify('Refresh interrupted: ' + error.message, 'error');
+    return;
+  } finally {
+    state.refreshing = false;
+    await reload();
+  }
+  notify('Refresh ' + (state.stopRefresh ? 'stopped' : 'finished') + ': ' +
+    updated + ' updated (' + images + ' with images), ' + failed +
+    ' unavailable, ' + skipped + ' skipped. Notes and tags kept.',
+    failed ? 'error' : 'success');
+}
+
+async function exportBookmarks() {
   try {
     const bookmarks = await listBookmarks();
     const file = new Blob([JSON.stringify({ format: 'linkbook', version: 1, exportedAt: new Date().toISOString(), bookmarks }, null, 2)], {type:'application/json'});
@@ -333,8 +320,7 @@ els.exportButton.addEventListener('click', async () => {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     notify(`Exported ${bookmarks.length} bookmarks. Keep the JSON file somewhere safe.`, 'success');
   } catch (error) { notify(`Export failed: ${error.message}`, 'error'); }
-});
-els.importButton.addEventListener('click', () => els.importFile.click());
+}
 els.importFile.addEventListener('change', async () => {
   const file = els.importFile.files?.[0];
   els.importFile.value = '';
@@ -359,6 +345,9 @@ els.importFile.addEventListener('change', async () => {
           siteName: String(raw.siteName || basic.siteName).slice(0,200), author: String(raw.author || '').slice(0,300),
           published: parsePublicationDate(raw.published),
           metadataSource: ['basic', 'page', 'github-api', 'defuddle-api'].includes(raw.metadataSource) ? raw.metadataSource : 'basic',
+          contentMarkdown: String(raw.contentMarkdown || '').slice(0, 100_000),
+          metadataCheckedAt: String(raw.metadataCheckedAt || ''),
+          metadataError: String(raw.metadataError || '').slice(0, 300),
           notes: String(raw.notes || '').slice(0,10000),
           tags: Array.isArray(raw.tags) ? [...new Set(raw.tags.filter(x => typeof x === 'string').map(x => x.trim()).filter(Boolean))].slice(0,30) : [],
           source: 'import', createdAt: !Number.isNaN(Date.parse(raw.createdAt)) ? raw.createdAt : new Date().toISOString(),
@@ -370,6 +359,128 @@ els.importFile.addEventListener('change', async () => {
     await reload();
     notify(`Imported ${imported} bookmarks; skipped ${skipped} duplicates or invalid entries.`, 'success');
   } catch (error) { notify(`Import failed: ${error.message}`, 'error'); }
+});
+
+
+// All operational actions live behind one visible command launcher.
+function availableCommands() {
+  const commands = [
+    {label:'Show all tags', detail:'Clear tag filter', run:()=>{state.selectedTag='';render();}},
+    ...availableTags().map(tag=>({label:'Filter tag: '+tag, detail:'Only show links tagged '+tag, run:()=>{state.selectedTag=tag;render();}})),
+    {label:'Refresh all links with Defuddle', detail:'Update metadata, article text and automatic images', run:refreshAllBookmarks},
+    ...(state.refreshing ? [{label:'Stop refreshing links', detail:'Finish the current request, then stop', run:()=>{state.stopRefresh=true;}}] : []),
+    {label:'Switch to grid view', detail:'Show bookmarks as cards', run:()=>{state.view='grid';saveView('grid');render();}},
+    {label:'Switch to list view', detail:'Show bookmarks as rows', run:()=>{state.view='list';saveView('list');render();}},
+    {label:'Export JSON backup', detail:'Download all locally saved bookmarks', run:exportBookmarks},
+    {label:'Import JSON backup', detail:'Import bookmarks from a file', run:()=>els.importFile.click()}
+  ];
+  const selected = state.selectedId && state.bookmarks.find(b=>b.id===state.selectedId);
+  if (selected) {
+    commands.unshift(
+      {label:'Refresh selected link', detail:selected.title || selected.url, run:refreshSelectedBookmark},
+      {label:'Edit selected link', detail:selected.title || selected.url, run:()=>openEditor(selected.id)},
+      {label:'Delete selected link', detail:'Asks for confirmation', run:deleteSelectedBookmark}
+    );
+    if (els.dialog.open) {
+      commands.unshift({label:'Save bookmark changes', detail:'Save the open details form', run:()=>els.detailForm.requestSubmit()});
+    }
+    if (selected.contentMarkdown) {
+      commands.push({label:'Copy extracted article text', detail:selected.title || selected.url, run:async()=> {
+        try {
+          await navigator.clipboard.writeText(selected.contentMarkdown);
+          notify('Extracted article text copied.', 'success');
+        } catch(error) {notify('Copy failed: '+error.message,'error');}
+      }});
+    }
+  }
+  const query=els.commandSearch.value.trim().toLowerCase();
+  if (query) {
+    for (const bookmark of state.bookmarks) {
+      const haystack=[bookmark.title,bookmark.url,bookmark.siteName].join(' ').toLowerCase();
+      if (!haystack.includes(query)) continue;
+      commands.push({
+        label:'Edit: '+(bookmark.title || domainOf(bookmark.url)),
+        detail:bookmark.url, run:()=>openEditor(bookmark.id)
+      });
+      commands.push({
+        label:'Open: '+(bookmark.title || domainOf(bookmark.url)),
+        detail:bookmark.url, run:()=>window.open(bookmark.url,'_blank','noopener')
+      });
+    }
+  }
+  return commands.filter(command =>
+    !query || (command.label+' '+command.detail).toLowerCase().includes(query)
+  ).slice(0,70);
+}
+let shownCommands=[];
+let commandIndex=0;
+function renderCommands() {
+  shownCommands=availableCommands();
+  els.commandResults.replaceChildren();
+  const nodes=shownCommands.map((command,index)=>{
+    const option=document.createElement('button');
+    option.type='button';
+    option.className='command-option'+(index===commandIndex?' active':'');
+    option.dataset.index=String(index);
+    const title=document.createElement('strong');
+    title.textContent=command.label;
+    const description=document.createElement('small');
+    description.textContent=command.detail;
+    option.append(title,description);
+    return option;
+  });
+  els.commandResults.append(...nodes);
+  if (!nodes.length) els.commandResults.textContent='No matching commands.';
+  if (commandIndex>=shownCommands.length) commandIndex=0;
+  for(const node of els.commandResults.children) {
+    node.classList?.toggle('active',Number(node.dataset.index)===commandIndex);
+  }
+}
+function openCommands() {
+  if (els.commandsDialog.open) return;
+  els.commandSearch.value='';
+  commandIndex=0;
+  renderCommands();
+  els.commandsDialog.showModal();
+  els.commandSearch.focus();
+}
+function runCommand(index) {
+  const command=shownCommands[index];
+  if (!command) return;
+  els.commandsDialog.close();
+  try {
+    const result = command.run(); // Keep file picker / new-tab actions in user activation.
+    if (result && typeof result.catch === 'function') result.catch(error=>notify('Command failed: '+error.message,'error'));
+  } catch (error) { notify('Command failed: '+error.message,'error'); }
+}
+els.commandsButton.addEventListener('click',openCommands);
+els.commandSearch.addEventListener('input',()=>{commandIndex=0;renderCommands();});
+els.commandSearch.addEventListener('keydown',event=>{
+  if(event.key==='ArrowDown'||event.key==='ArrowUp') {
+    event.preventDefault();
+    if (!shownCommands.length) return;
+    commandIndex=(commandIndex+(event.key==='ArrowDown'?1:-1)+shownCommands.length)%shownCommands.length;
+    renderCommands();
+  }else if(event.key==='Enter') {
+    event.preventDefault();
+    runCommand(commandIndex);
+  }
+});
+els.commandResults.addEventListener('click',event=>{
+  const option=event.target.closest('button[data-index]');
+  if(option)runCommand(Number(option.dataset.index));
+});
+els.commandsDialog.addEventListener('click',event=>{
+  if(event.target===els.commandsDialog)els.commandsDialog.close();
+});
+document.addEventListener('keydown',event=>{
+  if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k') {
+    event.preventDefault();
+    openCommands();
+  }else if((event.ctrlKey||event.metaKey)&&event.key==='Enter'&&els.dialog.open&&!els.commandsDialog.open) {
+    event.preventDefault();
+    els.detailForm.requestSubmit();
+  }
 });
 
 async function processShareTarget() {
@@ -387,7 +498,7 @@ async function processShareTarget() {
 
 async function initialize() {
   try { await reload(); await processShareTarget(); }
-  catch (error) { notify(`Local storage unavailable: ${error.message}. Check browser settings.`, 'error'); els.addButton.disabled = true; }
+  catch (error) { notify(`Local storage unavailable: ${error.message}. Check browser settings.`, 'error'); els.url.disabled = true; }
   // Retire this prototype's former PWA worker only. Other apps on the
   // same GitHub Pages origin, including the Testlab gallery, are untouched.
   if ('serviceWorker' in navigator) {
