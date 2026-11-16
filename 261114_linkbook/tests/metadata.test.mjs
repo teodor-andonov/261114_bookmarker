@@ -61,6 +61,7 @@ test('one hosted request enriches title, description, author and site but keeps 
     assert.equal(data.siteName, 'Example Magazine');
     assert.equal(data.favicon, 'https://example.org/favicon.ico');
     assert.equal(data.image, '');
+    assert.equal(data.contentMarkdown, 'Full text');
     assert.equal(data.metadataSource, 'defuddle-api');
   } finally { globalThis.fetch = previous; }
 });
@@ -74,4 +75,45 @@ test('a failed Defuddle API call preserves usable metadata with one request', as
     assert.equal(fallback.title, 'hello world');
     assert.equal(fallback.metadataSource, 'basic');
   } finally { globalThis.fetch = previous; }
+});
+
+test('extracts first usable article image, resolves relative URLs, ignores icons and logos', async () => {
+  const { firstArticleImage } = await import('../metadata.js');
+  const markdown = '![logo](/assets/site-logo.svg)\n\n![Hero](../images/architecture.jpg)\n\n![Other](https://cdn.example/another.png)';
+  assert.equal(
+    firstArticleImage(markdown, 'https://example.org/articles/buildings/index.html'),
+    'https://example.org/articles/images/architecture.jpg'
+  );
+  assert.equal(firstArticleImage('No article images here', 'https://example.org/'), '');
+  assert.equal(firstArticleImage('![x](javascript:alert)', 'https://example.org/'), '');
+});
+
+test('hosted Defuddle response stores article text and finds its image in one request', async () => {
+  const { getMetadata } = await import('../metadata.js');
+  const oldFetch = globalThis.fetch;
+  let calls=0;
+  try {
+    globalThis.fetch = async () => {
+      calls++;
+      return new Response('---\ntitle: "A building"\nauthor: "Architect"\n---\n\n# Chapter\n\nWords about a building.\n\n![Model](https://example.org/media/cover.jpg)');
+    };
+    const result = await getMetadata('https://example.org/articles/building');
+    assert.equal(calls, 1);
+    assert.equal(result.title,'A building');
+    assert.equal(result.image, 'https://example.org/media/cover.jpg');
+    assert.match(result.contentMarkdown,/Words about a building/);
+    assert.equal(result.metadataError, '');
+  } finally { globalThis.fetch = oldFetch; }
+});
+
+test('metadata rate-limit errors are reported without losing the URL fallback', async () => {
+  const { getMetadata } = await import('../metadata.js');
+  const oldFetch = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => new Response('too many requests', {status:429});
+    const data=await getMetadata('https://example.org/a');
+    assert.equal(data.metadataSource, 'basic');
+    assert.match(data.metadataError,/HTTP 429/);
+    assert.equal(data.favicon,'https://example.org/favicon.ico');
+  } finally {globalThis.fetch=oldFetch;}
 });
