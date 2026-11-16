@@ -130,7 +130,7 @@ export async function getMetadata(urlString, sharedTitle = '') {
       author: String(metadata.author || '').trim().slice(0, 300),
       siteName: String(metadata.site || metadata.domain || basic.siteName).trim().slice(0, 200),
       published: parsePublicationDate(metadata.published),
-      image: firstArticleImage(contentMarkdown, urlString) || basic.image,
+      image: basic.image || firstArticleImage(contentMarkdown, urlString),
       // YouTube's predictable thumbnail remains the only domain-specific fallback.
       contentMarkdown,
       metadataSource: 'defuddle-api',
