@@ -5,7 +5,7 @@ import { coverIdentity, coverImage, isLocalCover } from './cover.js';
 const $ = id => document.getElementById(id);
 const els = {
   addForm: $('addForm'), url: $('urlInput'), message: $('message'),
-  count: $('totalCount'), search: $('searchInput'), sort: $('sortSelect'), tags: $('tagFilters'),
+  count: $('totalCount'), search: $('searchInput'), sort: $('sortSelect'),
   list: $('bookmarkList'), empty: $('emptyState'), emptyTitle: $('emptyTitle'), emptyDescription: $('emptyDescription'),
   commandsButton: $('commandsButton'), commandsDialog: $('commandsDialog'),
   commandSearch: $('commandSearch'), commandResults: $('commandResults'),
@@ -87,17 +87,13 @@ function cardHtml(b) {
     '</div></article>';
 }
 
-function renderTags() {
-  const totals = new Map();
-  for (const bookmark of state.bookmarks) for (const tag of bookmark.tags || []) totals.set(tag, (totals.get(tag) || 0) + 1);
-  if (state.selectedTag && !totals.has(state.selectedTag)) state.selectedTag = '';
-  const items = [...totals].sort(([a], [b]) => a.localeCompare(b));
-  els.tags.innerHTML = items.length ? `<button class="tag-filter ${state.selectedTag === '' ? 'selected' : ''}" type="button" data-tag="">All <span class="tag-count">${state.bookmarks.length}</span></button>` + items.map(([tag,count]) => `<button type="button" class="tag-filter ${state.selectedTag === tag ? 'selected' : ''}" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)} <span class="tag-count">${count}</span></button>`).join('') : '';
+function availableTags() {
+  return [...new Set(state.bookmarks.flatMap(bookmark => bookmark.tags || []))].sort((a,b)=>a.localeCompare(b));
 }
 
 function render() {
   els.count.textContent = String(state.bookmarks.length);
-  renderTags();
+  if (state.selectedTag && !availableTags().includes(state.selectedTag)) state.selectedTag = '';
   const bookmarks = filteredBookmarks();
   els.list.className = state.view === 'list' ? 'bookmark-grid list-view' : 'bookmark-grid';
   els.list.innerHTML = bookmarks.map(cardHtml).join('');
@@ -139,7 +135,7 @@ async function createBookmark(rawUrl, sharedTitle = '') {
   await reload();
   notify('Saved locally. Fetching article metadata and text via Defuddle…', 'success');
   // Save first; attempt metadata enrichment without blocking the Add button.
-  void enrichBookmark(bookmark, sharedTitle);
+  void enrichBookmark(bookmark, sharedTitle).catch(error => notify('Metadata could not be saved: '+error.message,'error'));
   return true;
 }
 
@@ -193,12 +189,6 @@ els.list.addEventListener('keydown', event => {
 els.list.addEventListener('error', event => {
   if (event.target instanceof HTMLImageElement) event.target.classList.add('is-hidden');
 }, true);
-els.tags.addEventListener('click', event => {
-  const button = event.target.closest('button[data-tag]');
-  if (!button) return;
-  state.selectedTag = button.dataset.tag || '';
-  render();
-});
 els.search.addEventListener('input', render);
 els.sort.addEventListener('change', render);
 els.dialog.addEventListener('click', event => {
@@ -218,12 +208,13 @@ els.detailForm.addEventListener('submit', async event => {
     const tags = [...new Set(formControl('tags').value.split(',').map(x => x.trim()).filter(Boolean))].slice(0, 30);
     const urlChanged = url !== current.url;
     const saved = {
-      ...current, url, title: formControl('title').value.trim().slice(0, 500),
+      ...current,
+      ...(urlChanged ? {...fallbackMetadata(url), contentMarkdown: '', metadataError: '', metadataCheckedAt: ''} : {}),
+      url, title: formControl('title').value.trim().slice(0, 500),
       description: formControl('description').value.trim().slice(0, 5000),
       author: formControl('author').value.trim().slice(0, 300),
       published: parsePublicationDate(formControl('published').value),
       tags, notes: formControl('notes').value.slice(0, 10000),
-      ...(urlChanged ? {...fallbackMetadata(url), contentMarkdown: '', metadataError: '', metadataCheckedAt: ''} : {}),
       updatedAt: new Date().toISOString()
     };
     if (!saved.title) throw new Error('Title cannot be empty.');
@@ -380,6 +371,8 @@ els.importFile.addEventListener('change', async () => {
 // All operational actions live behind one visible command launcher.
 function availableCommands() {
   const commands = [
+    {label:'Show all tags', detail:'Clear tag filter', run:()=>{state.selectedTag='';render();}},
+    ...availableTags().map(tag=>({label:'Filter tag: '+tag, detail:'Only show links tagged '+tag, run:()=>{state.selectedTag=tag;render();}})),
     {label:'Refresh all links with Defuddle', detail:'Update metadata, article text and automatic images', run:refreshAllBookmarks},
     ...(state.refreshing ? [{label:'Stop refreshing links', detail:'Finish the current request, then stop', run:()=>{state.stopRefresh=true;}}] : []),
     {label:'Switch to grid view', detail:'Show bookmarks as cards', run:()=>{state.view='grid';saveView('grid');render();}},
@@ -461,9 +454,10 @@ function runCommand(index) {
   const command=shownCommands[index];
   if (!command) return;
   els.commandsDialog.close();
-  void Promise.resolve().then(command.run).catch(error=>{
-    notify('Command failed: '+error.message,'error');
-  });
+  try {
+    const result = command.run(); // Keep file picker / new-tab actions in user activation.
+    if (result && typeof result.catch === 'function') result.catch(error=>notify('Command failed: '+error.message,'error'));
+  } catch (error) { notify('Command failed: '+error.message,'error'); }
 }
 els.commandsButton.addEventListener('click',openCommands);
 els.commandSearch.addEventListener('input',()=>{commandIndex=0;renderCommands();});
@@ -510,7 +504,7 @@ async function processShareTarget() {
 
 async function initialize() {
   try { await reload(); await processShareTarget(); }
-  catch (error) { notify(`Local storage unavailable: ${error.message}. Check browser settings.`, 'error'); els.addButton.disabled = true; }
+  catch (error) { notify(`Local storage unavailable: ${error.message}. Check browser settings.`, 'error'); els.url.disabled = true; }
   // Retire this prototype's former PWA worker only. Other apps on the
   // same GitHub Pages origin, including the Testlab gallery, are untouched.
   if ('serviceWorker' in navigator) {
