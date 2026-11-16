@@ -169,20 +169,26 @@ async function openEditor(id) {
   } catch (error) { notify(error.message, 'error'); }
 }
 
+// A URL is saved with Enter; operational actions live in the command palette.
 els.addForm.addEventListener('submit', async event => {
   event.preventDefault();
   if (state.loading) return;
-  state.loading = true; els.addButton.disabled = true;
+  state.loading = true;
   try { const saved = await createBookmark(els.url.value); if (saved) els.url.value = ''; }
   catch (error) { notify(error.message || 'Unable to save this link.', 'error'); }
-  finally { state.loading = false; els.addButton.disabled = false; }
+  finally { state.loading = false; }
 });
 
 els.list.addEventListener('click', event => {
-  const button = event.target.closest('button[data-action="edit"]');
-  if (!button) return;
-  const id = button.closest('.bookmark-card')?.dataset.id;
-  if (id) openEditor(id);
+  if (event.target.closest('a')) return; // Image opens the original URL.
+  const id = event.target.closest('.bookmark-card')?.dataset.id;
+  if (id) void openEditor(id);
+});
+els.list.addEventListener('keydown', event => {
+  if (event.key !== 'Enter' || event.target !== event.target.closest('.bookmark-card')) return;
+  event.preventDefault();
+  const id = event.target.dataset.id;
+  if (id) void openEditor(id);
 });
 els.list.addEventListener('error', event => {
   if (event.target instanceof HTMLImageElement) event.target.classList.add('is-hidden');
@@ -195,34 +201,9 @@ els.tags.addEventListener('click', event => {
 });
 els.search.addEventListener('input', render);
 els.sort.addEventListener('change', render);
-for (const [view, button] of [['grid', els.gridButton], ['list', els.listButton]]) {
-  button.addEventListener('click', () => { state.view = view; saveView(view); render(); });
-}
-els.closeDialog.addEventListener('click', () => els.dialog.close());
-els.dialog.addEventListener('click', event => { if (event.target === els.dialog) els.dialog.close(); });
-for (const field of ['title', 'coverMode', 'customCoverUrl']) {
-  formControl(field).addEventListener('input', updateCoverPreview);
-}
-els.coverUpload.addEventListener('change', async () => {
-  const file = els.coverUpload.files?.[0];
-  if (!file) return;
-  try {
-    els.metadataStatus.textContent = 'Optimising image locally…';
-    state.coverUploadData = await resizeCover(file);
-    formControl('coverMode').value = 'custom';
-    els.metadataStatus.textContent = 'Custom cover ready. Save changes to keep it with this bookmark.';
-    updateCoverPreview();
-  } catch (error) { els.metadataStatus.textContent = error.message; }
-  finally { els.coverUpload.value = ''; }
+els.dialog.addEventListener('click', event => {
+  if (event.target === els.dialog) els.dialog.close();
 });
-els.clearCover.addEventListener('click', () => {
-  state.coverUploadData = '';
-  formControl('customCoverUrl').value = '';
-  formControl('coverMode').value = 'graphic';
-  els.metadataStatus.textContent = 'Custom cover cleared. The simple cover will be used when you save.';
-  updateCoverPreview();
-});
-
 
 els.detailForm.addEventListener('submit', async event => {
   event.preventDefault();
@@ -235,52 +216,113 @@ els.detailForm.addEventListener('submit', async event => {
     const another = await getByUrl(url);
     if (another && another.id !== id) throw new Error('Another bookmark already uses that URL.');
     const tags = [...new Set(formControl('tags').value.split(',').map(x => x.trim()).filter(Boolean))].slice(0, 30);
+    const urlChanged = url !== current.url;
     const saved = {
       ...current, url, title: formControl('title').value.trim().slice(0, 500),
       description: formControl('description').value.trim().slice(0, 5000),
       author: formControl('author').value.trim().slice(0, 300),
       published: parsePublicationDate(formControl('published').value),
-      image: safeImageUrl(formControl('image').value, url),
-      coverMode: formControl('coverMode').value,
-      coverData: isLocalCover(state.coverUploadData) ? state.coverUploadData : '',
-      customCoverUrl: safeImageUrl(formControl('customCoverUrl').value, url),
-      tags, notes: formControl('notes').value.slice(0, 10000), updatedAt: new Date().toISOString()
+      tags, notes: formControl('notes').value.slice(0, 10000),
+      ...(urlChanged ? {...fallbackMetadata(url), contentMarkdown: '', metadataError: '', metadataCheckedAt: ''} : {}),
+      updatedAt: new Date().toISOString()
     };
     if (!saved.title) throw new Error('Title cannot be empty.');
-    if (saved.coverMode === 'custom' && !saved.coverData && !saved.customCoverUrl) throw new Error('For a custom cover, upload an image or enter an image URL.');
     await saveBookmark(saved);
     els.dialog.close();
     await reload();
-    notify('Bookmark updated.', 'success');
-  } catch (error) { notify(error.message, 'error'); els.metadataStatus.textContent = error.message; }
+    notify('Bookmark details saved.', 'success');
+    if (urlChanged) void enrichBookmark(saved);
+  } catch (error) {
+    notify(error.message, 'error');
+    els.metadataStatus.textContent = error.message;
+  }
 });
 
-els.deleteButton.addEventListener('click', async () => {
-  if (!state.selectedId || !confirm('Delete this bookmark from this browser?')) return;
-  try { await deleteBookmark(state.selectedId); els.dialog.close(); await reload(); notify('Bookmark deleted.', 'success'); }
-  catch (error) { notify(error.message, 'error'); }
-});
-
-els.refreshButton.addEventListener('click', async () => {
-  const id = state.selectedId;
-  if (!id) return;
-  els.refreshButton.disabled = true;
-  els.metadataStatus.textContent = 'Fetching metadata via Defuddle…';
+async function deleteSelectedBookmark() {
+  if (!state.selectedId || !confirm('Delete the selected bookmark from this browser?')) return;
   try {
-    const current = await getBookmark(id);
-    if (!current) return;
-    const result = await getMetadata(current.url);
-    if (result.metadataSource === 'basic') {
-      els.metadataStatus.textContent = 'Defuddle could not provide metadata (page unavailable, blocked or API limit reached).';
-      return;
+    await deleteBookmark(state.selectedId);
+    state.selectedId = null;
+    els.dialog.close();
+    await reload();
+    notify('Bookmark deleted.', 'success');
+  } catch (error) { notify(error.message, 'error'); }
+}
+
+// Refresh only automatically extracted fields; notes, tags and creation dates survive.
+// If a user edits a bookmark while a request is running, do not overwrite those edits.
+async function refreshBookmark(id) {
+  const current = await getBookmark(id);
+  if (!current) return {status: 'skipped'};
+  const result = await getMetadata(current.url);
+  const latest = await getBookmark(id);
+  if (!latest || latest.updatedAt !== current.updatedAt) return {status: 'skipped'};
+  if (result.metadataSource === 'basic') {
+    await saveBookmark({
+      ...latest, metadataCheckedAt: result.metadataCheckedAt,
+      metadataError: result.metadataError || 'No metadata returned'
+    });
+    return {status: 'failed', error: result.metadataError || 'No metadata returned'};
+  }
+  await saveBookmark({
+    ...latest, ...result,
+    // A successful re-extraction supersedes legacy manual image choices.
+    updatedAt: new Date().toISOString()
+  });
+  return {status: 'updated', image: Boolean(result.image), content: Boolean(result.contentMarkdown)};
+}
+
+async function refreshSelectedBookmark() {
+  if (!state.selectedId) return;
+  const result = await refreshBookmark(state.selectedId);
+  await reload();
+  if (els.dialog.open) {
+    const current = await getBookmark(state.selectedId);
+    if (current) fillEditor(current);
+  }
+  notify(result.status === 'updated' ? 'Bookmark refreshed using Defuddle.' :
+    'Refresh did not update bookmark: ' + (result.error || result.status),
+    result.status === 'updated' ? 'success' : 'error');
+}
+
+async function refreshAllBookmarks() {
+  if (state.refreshing) return;
+  const ids = (await listBookmarks()).map(item => item.id);
+  if (!ids.length) { notify('No bookmarks to refresh.'); return; }
+  state.refreshing = true;
+  state.stopRefresh = false;
+  let updated = 0, failed = 0, skipped = 0, images = 0;
+  try {
+    for (let i = 0; i < ids.length; i++) {
+      if (state.stopRefresh) break;
+      notify('Refreshing ' + (i + 1) + '/' + ids.length + ' · ' +
+        updated + ' updated, ' + failed + ' failed');
+      const result = await refreshBookmark(ids[i]);
+      if (result.status === 'updated') { updated++; if (result.image) images++; }
+      else if (result.status === 'failed') {
+        failed++;
+        // Respect the hosted free-tier rate limit; do not keep hammering.
+        if (/HTTP 429/i.test(result.error || '')) {
+          state.stopRefresh = true;
+          notify('Defuddle rate limit reached; refresh stopped. ' + updated +
+            ' updated, ' + failed + ' failed.', 'error');
+        }
+      } else skipped++;
+      await reload();
+      if (i < ids.length - 1 && !state.stopRefresh) await new Promise(resolve => setTimeout(resolve, 350));
     }
-    // The refresh button deliberately re-fetches page fields, retaining local notes/tags.
-    const updated = { ...current, ...result, image: result.image || current.image || '', favicon: current.favicon || result.favicon, updatedAt: new Date().toISOString() };
-    await saveBookmark(updated); fillEditor(updated); await reload();
-    notify('Metadata refreshed.', 'success');
-  } catch (error) { els.metadataStatus.textContent = error.message; }
-  finally { els.refreshButton.disabled = false; }
-});
+  } catch (error) {
+    notify('Refresh interrupted: ' + error.message, 'error');
+    return;
+  } finally {
+    state.refreshing = false;
+    await reload();
+  }
+  notify('Refresh ' + (state.stopRefresh ? 'stopped' : 'finished') + ': ' +
+    updated + ' updated (' + images + ' with images), ' + failed +
+    ' unavailable, ' + skipped + ' skipped. Notes and tags kept.',
+    failed ? 'error' : 'success');
+}
 
 els.exportButton.addEventListener('click', async () => {
   try {
