@@ -1,6 +1,7 @@
 import { listBookmarks, getBookmark, getByUrl, saveBookmark, deleteBookmark } from './db.js';
 import { normalizeUrl, safeImageUrl, fallbackMetadata, getMetadata, urlFromShare, parsePublicationDate } from './metadata.js';
 import { coverIdentity, coverImage, isLocalCover } from './cover.js';
+import { mergeEnrichment } from './refresh.js';
 
 const $ = id => document.getElementById(id);
 const els = {
@@ -112,12 +113,12 @@ async function enrichBookmark(bookmark, sharedTitle) {
   const current = await getBookmark(bookmark.id);
   if (!current || current.updatedAt !== bookmark.updatedAt) return;
   if (enriched.metadataSource === 'basic') {
-    await saveBookmark({...current, metadataError: enriched.metadataError || 'Metadata unavailable', metadataCheckedAt: enriched.metadataCheckedAt});
+    await saveBookmark(mergeEnrichment(current, enriched));
     await reload();
     notify('Link saved. Metadata unavailable: ' + (enriched.metadataError || 'No article found'), 'error');
     return;
   }
-  await saveBookmark({ ...current, ...enriched, updatedAt: new Date().toISOString() });
+  await saveBookmark(mergeEnrichment(current, enriched));
   await reload();
   notify(enriched.image ? 'Link enriched with article text and image.' : 'Link enriched with text; no usable article image found.', 'success');
 }
@@ -249,17 +250,10 @@ async function refreshBookmark(id) {
   const latest = await getBookmark(id);
   if (!latest || latest.updatedAt !== current.updatedAt) return {status: 'skipped'};
   if (result.metadataSource === 'basic') {
-    await saveBookmark({
-      ...latest, metadataCheckedAt: result.metadataCheckedAt,
-      metadataError: result.metadataError || 'No metadata returned'
-    });
+    await saveBookmark(mergeEnrichment(latest, result));
     return {status: 'failed', error: result.metadataError || 'No metadata returned'};
   }
-  await saveBookmark({
-    ...latest, ...result,
-    // A successful re-extraction supersedes legacy manual image choices.
-    updatedAt: new Date().toISOString()
-  });
+  await saveBookmark(mergeEnrichment(latest, result));
   return {status: 'updated', image: Boolean(result.image), content: Boolean(result.contentMarkdown)};
 }
 
