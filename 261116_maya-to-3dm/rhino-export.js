@@ -58,12 +58,12 @@ export async function exportMesh3dm(parsed) {
     // Reopen in the same OpenNURBS library before offering the bytes to the user.
     const roundtrip = rhino.File3dm.fromByteArray(bytes);
     if (!roundtrip || roundtrip.objects().count !== parsed.objects.length) {
-      if (roundtrip) roundtrip.delete();
+      if (roundtrip) roundtrip.destroy();
       throw new Error("3DM read-back verification failed.");
     }
-    roundtrip.delete();
+    roundtrip.destroy();
     return bytes;
   } finally {
-    doc.delete();
+    doc.destroy();
   }
 }
