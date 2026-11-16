@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#141a20">
+  <title>Maya → Rhino · Testlab</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark">M<span>→</span>R</div>
+        <div>
+          <h1>Maya → Rhino</h1>
+          <p>Geometry-only ASCII to 3DM</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <label class="button primary upload-button" for="file-input">Open .ma</label>
+        <input id="file-input" type="file" accept=".ma,text/plain" hidden>
+        <button class="button" id="export-button" disabled>Export .3dm</button>
+        <button class="button" id="script-button" title="Use inside Rhino 8 or 9 to convert mesh cages to native SubD">Get SubD script</button>
+      </div>
+    </header>
+    <div class="workspace">
+      <section class="viewer" id="drop-target" aria-label="3D geometry preview">
+        <canvas id="viewport"></canvas>
+        <div class="empty" id="empty">
+          <div class="drop-icon">⬡</div>
+          <h2>Drop a Maya ASCII file</h2>
+          <p>Read polygon control cages, preview them, export a geometry-only Rhino 3DM.</p>
+          <label class="button primary" for="file-input">Choose .ma file</label>
+        </div>
+        <div class="viewer-tools">
+          <span class="view-mode">CONTROL CAGE</span>
+          <label class="toggle"><input type="checkbox" id="wireframe" checked> Edges</label>
+          <button id="fit-button" title="Fit geometry" aria-label="Fit geometry">Fit view</button>
+        </div>
+        <div class="view-footer">Drag to orbit · Scroll to zoom · Right-drag to pan</div>
+      </section>
+      <aside class="sidebar">
+        <div class="section-head">
+          <div class="eyebrow">INPUT</div>
+          <h2 id="file-name">No file loaded</h2>
+          <div class="subtle" id="file-info">Autodesk Maya ASCII (.ma)</div>
+        </div>
+        <div id="status" class="status">Waiting for a file.</div>
+        <div class="summary" id="summary">
+          <div class="metric"><strong id="object-count">—</strong><span>Objects</span></div>
+          <div class="metric"><strong id="face-count">—</strong><span>Faces</span></div>
+          <div class="metric"><strong id="quad-count">—</strong><span>Quads</span></div>
+          <div class="metric"><strong id="unit-label">—</strong><span>Units</span></div>
+        </div>
+        <div class="list-head"><span>GEOMETRY</span><span id="geometry-count"></span></div>
+        <div id="objects" class="object-list"><p class="quiet">Imported meshes will appear here.</p></div>
+        <div id="warnings" class="warnings" hidden></div>
+        <div class="workflow">
+          <div class="eyebrow">SUBD WORKFLOW</div>
+          <p>The .3dm contains original polygon cages, not tessellated smooth previews.</p>
+          <p>For <strong>native editable Rhino SubD</strong>: open the .3dm in Rhino, run the downloaded Python script using <code>_RunPythonScript</code>, then Save As.</p>
+          <p class="subtle">Maya construction history and edge creases are not evaluated. Meshes with N-gons are triangulated.</p>
+        </div>
+      </aside>
+    </div>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
