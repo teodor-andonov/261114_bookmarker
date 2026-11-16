@@ -44,6 +44,12 @@ jobs:
           npm install --no-audit --no-fund
           npm test
           npm run build
+      - name: Build Maya-to-Rhino converter
+        working-directory: 261116_maya-to-3dm
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+          npm run build
       - name: Assemble landing page and self-contained prototypes
         run: python3 .github/scripts/build_site.py
       - uses: actions/configure-pages@v5

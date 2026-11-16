@@ -1,0 +1,8 @@
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg:#eef1f3; --surface:#fafbfc; --surface-high:#edf1f3;
+  --line:#d9e0e5; --fg:#202c34; --muted:#667782; --quiet:#82929b;
+  --accent:#5e889a; --accent-fg:#fff;
+}
+html[data-theme="light"] .status[data-kind="ok"] {color:#417a64;}
+html[data-theme="light"] .status[data-kind="error"] {color:#ab433c;}
