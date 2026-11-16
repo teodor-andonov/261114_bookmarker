@@ -89,3 +89,32 @@
 
 /* The title is already part of the simple cover in grid view; avoid repeating it below. */
 .bookmark-grid:not(.list-view) .bookmark-card.no-cover-image .bookmark-body h3 { display:none; }
+
+
+/* Unified automatic preview + single command launcher. */
+.input-submit-hint{color:#959e98;font:600 11px ui-monospace,Consolas,monospace;white-space:nowrap;padding:0 12px}
+.bookmark-cover-link{display:block;text-decoration:none;color:inherit}
+.bookmark-card{cursor:pointer}
+.bookmark-card:focus-visible{outline:2px solid #819bac;outline-offset:3px}
+.bookmark-card .bookmark-body{cursor:pointer}
+.bookmark-card .card-hint{font-size:10px;color:#9aa29c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bookmark-card .bookmark-foot{justify-content:space-between;min-width:0}
+.bookmark-card .bookmark-foot .card-hint{min-width:0}
+.list-view .bookmark-cover-link{width:165px;min-width:165px;display:flex}
+.list-view .bookmark-cover-link .preview{width:100%;min-width:0}
+@media(max-width:770px){.list-view .bookmark-cover-link{width:115px;min-width:115px}}
+@media(max-width:510px){.list-view .bookmark-cover-link{width:92px;min-width:92px}.card-hint{display:none}.input-submit-hint{padding:0 5px;font-size:10px}}
+.dialog-fields textarea[readonly]{font:12px/1.6 ui-monospace,Consolas,monospace;min-height:140px;resize:vertical}
+.dialog-actions .detail-help{margin:0}
+.commands-dialog{position:fixed;top:min(15dvh,110px);bottom:auto;width:min(580px,calc(100vw - 24px));max-height:min(78dvh,700px);border-radius:13px;border:1px solid #d9dfd9;padding:0;background:#fff;color:#27312b;box-shadow:0 30px 100px #071a144a}
+.commands-dialog::backdrop{background:#0b17128a;backdrop-filter:blur(3px)}
+.commands-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 19px 12px}
+.commands-heading h2{margin:0;font-size:17px;letter-spacing:-.035em}
+.commands-heading span{font-size:10px;color:#89938d}
+.command-search{display:block;box-sizing:border-box;width:calc(100% - 30px);margin:0 15px 9px;padding:12px;border:1px solid #dce4de;border-radius:8px;color:#27312b;background:#f9fbf9;outline-offset:2px;font-size:13px}
+.command-results{overflow-y:auto;max-height:50dvh;padding:0 9px 5px}
+.command-option{display:flex;flex-direction:column;align-items:flex-start;width:100%;min-height:48px;text-align:left;padding:10px 12px;margin-bottom:3px;border:0;border-radius:8px;background:transparent;color:#2a352d;gap:2px}
+.command-option strong{font-size:12px;font-weight:650}
+.command-option small{color:#89968c;font-size:10px;white-space:nowrap;max-width:100%;text-overflow:ellipsis;overflow:hidden}
+.command-option:hover,.command-option.active{background:#edf2ee}
+.command-help{padding:11px 18px 15px;margin:0;border-top:1px solid #e5eae6;color:#929d95;font-size:10px}
