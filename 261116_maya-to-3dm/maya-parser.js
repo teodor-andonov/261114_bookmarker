@@ -74,7 +74,7 @@ function mayaApplyTransforms(point, shape, nodes) {
     parent = node.parent;
   }
   // Maya's default Y-up coordinates to Rhino's default Z-up (right-handed).
-  return [p[0], -p[2], p[1]];
+  return [p[0], p[2] === 0 ? 0 : -p[2], p[1]];
 }
 
 export function parseMayaAscii(text) {
