@@ -2,6 +2,7 @@ import {
   PANEL_IDS, defaultLayout, isValidLayout, findStack, stackContaining,
   movePanel, activatePanel, cycleTab, allStacks,
 } from "./layout-core.js";
+import { zoneAt, gapInsertion } from "./dock-target.js";
 
 const LABELS = {
   editor: "Editor", viewer: "Viewer", runner: "Replicad Runner",
@@ -23,7 +24,20 @@ export function createWorkspace(host, panels, onFocus = () => {}) {
   let focusedId = stackContaining(layout, "editor")?.id || allStacks(layout)[0].id;
   let maximizedId = null;
   let draggingPanel = null;
+  let highlighted = null;
 
+  function clearHighlight() {
+    if (!highlighted) return;
+    highlighted.classList.remove("drop-target");
+    highlighted.removeAttribute("data-drop-zone");
+    highlighted = null;
+  }
+  function highlight(node, zone) {
+    if (highlighted !== node) clearHighlight();
+    highlighted = node;
+    node.classList.add("drop-target");
+    node.dataset.dropZone = zone;
+  }
   function persist() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(layout)); } catch {}
   }
@@ -45,7 +59,25 @@ export function createWorkspace(host, panels, onFocus = () => {}) {
       const grip = el("div", "split-grip");
       grip.setAttribute("role", "separator");
       grip.setAttribute("aria-orientation", node.axis === "x" ? "vertical" : "horizontal");
-      grip.setAttribute("title", "Drag to resize");
+      grip.setAttribute("title", "Drag to resize, or drop a panel to insert in this gap");
+      grip.addEventListener("dragover", event => {
+        if (!draggingPanel) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = "move";
+        highlight(grip, "gap");
+      });
+      grip.addEventListener("drop", event => {
+        if (!draggingPanel) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const moved = draggingPanel;
+        const { targetId, zone } = gapInsertion(node, moved);
+        draggingPanel = null;
+        clearHighlight();
+        document.body.classList.remove("dragging-panel");
+        dock(moved, targetId, zone);
+      });
       grip.addEventListener("pointerdown", event => {
         event.preventDefault();
         grip.setPointerCapture(event.pointerId);
@@ -95,6 +127,7 @@ export function createWorkspace(host, panels, onFocus = () => {}) {
       });
       button.addEventListener("dragend", () => {
         draggingPanel = null;
+        clearHighlight();
         document.body.classList.remove("dragging-panel");
       });
       tabs.append(button);
@@ -112,29 +145,30 @@ export function createWorkspace(host, panels, onFocus = () => {}) {
 
     const content = el("div", "dock-content");
     content.append(panels[node.active]);
-    const targets = el("div", "dock-targets");
-    for (const zone of ["top","left","center","right","bottom"]) {
-      const area = el("div", "dock-zone zone-" + zone, zone === "center" ? "Tab" : zone);
-      area.addEventListener("dragover", event => {
-        if (!draggingPanel) return;
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "move";
-        targets.querySelectorAll(".dock-zone").forEach(n => n.classList.remove("hovered"));
-        area.classList.add("hovered");
-      });
-      area.addEventListener("drop", event => {
-        event.preventDefault();
-        const moved = draggingPanel || event.dataTransfer.getData("text/plain");
-        draggingPanel = null;
-        document.body.classList.remove("dragging-panel");
-        dock(moved, node.id, zone);
-      });
-      targets.append(area);
-    }
-    root.append(header, content, targets);
+    const accept = event => {
+      if (!draggingPanel) return null;
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = "move";
+      const zone = zoneAt(root.getBoundingClientRect(), event.clientX, event.clientY);
+      highlight(root, zone);
+      return zone;
+    };
+    root.addEventListener("dragover", accept, true);
+    root.addEventListener("drop", event => {
+      if (!draggingPanel) return;
+      const zone = accept(event);
+      const moved = draggingPanel;
+      draggingPanel = null;
+      clearHighlight();
+      document.body.classList.remove("dragging-panel");
+      dock(moved, node.id, zone);
+    }, true);
+    root.append(header, content);
     return root;
   }
   function render() {
+    clearHighlight();
     if (maximizedId && !findStack(layout, maximizedId)) maximizedId = null;
     if (!findStack(layout, focusedId)) focusedId = allStacks(layout)[0].id;
     host.classList.toggle("is-maximized", Boolean(maximizedId));

@@ -1,21 +1,42 @@
-# Modular Studio — dockable workspace prototype
+# Modular Studio — Testlab prototype
 
-**Version**: 0.1.0-alpha.1. Standalone browser-only experiment in the Testlab, built with Vite and deployed as static assets on GitHub Pages. No runtime server, account, shared database, collaboration layer, or custom model format.
+**Version:** 0.2.0-alpha.1. Browser-only, static Vite experiment: a small composition shell inspired by the *ideas* discussed around Patchwork and the flexibility of Obsidian. Built independently, not a Patchwork fork.
 
-This is an architecture-studio *shell* experiment inspired by the flexibility of Obsidian and the component-composition ideas discussed around Patchwork. The implementation is original, not a fork.
+## Architecture
 
-## Components and contracts
+```
+                           Workspace shell
+                         splits / tabs / focus
+                                |
+  JavaScript source -> Replicad Runner -> Geometry document (worker-owned)
+       ^                                       |
+       |                                 Geometry Formatter
+  Parametric Controls                     /      |       \
+       |                              viewer mesh  STEP    STL
+       |                                  |
+     Editor                             Viewer
+```
 
-- **Shell** — plain JavaScript, recursive split/stack tree in layout-core.js and DOM renderer in layout.js; drag tabs onto center to stack, edges to split; drag gutters to resize; layouts (UI only) remembered using a namespaced localStorage key.
-- **Editor** — CodeMirror 6 operating on one ordinary JavaScript model document.
-- **Replicad Runner** — dedicated Web Worker with Replicad + OpenCascade WASM. Runs only explicitly opened/load-demo/run sources or after parameter edits. Produces mesh previews and optional STEP/STL exports, with build status/logs.
-- **Viewer** — Three.js presentation of worker meshes; camera persists across rebuilds and panel moves.
-- **Formatter** — Prettier processor; preview and apply edits to the same source document, preserving CodeMirror undo.
-- **Parametric Controls** — values discovered from the model's top-level defaultParams. Changes precisely replace source literals through an Acorn parser. There is no second parameter truth.
+**Shell** — small recursive split/stack layout tree. Panels may move without being recreated. Only the *layout preference* is persisted in namespaced localStorage.
 
-## Source format
+**Editor** — CodeMirror 6 edits a normal `.js` file.
 
-Standard Replicad Studio scripts:
+**Replicad Runner** — evaluates trusted scripts and produces a geometry document consisting of OpenCascade-backed Replicad shapes. It does not directly produce the viewer's meshes or exports.
+
+**Geometry Formatter** — registry of source/target format adapters, distinct from the runner and the UI panel. The formatter converts the worker-owned `replicad/shapes` document into:
+- `viewer/mesh` (tessellated faces and feature edges; automatically sent to the Three.js viewer)
+- `step` (precise CAD B-rep; export on demand)
+- `stl` (tessellated mesh; single shape only in this prototype)
+
+Because OpenCascade WASM shapes aren't transferable to the UI thread, the formatter operates **inside the same Web Worker** as the runner; the two are separate modules and commands. This is an explicit translation contract, *not* a universal converter. Other runners like build123d could be added with new input adapters, and formats such as 3DM or glTF could be added as new outputs. There is no fake "one shape converts to everything" shortcut and no mesh presented as exact CAD.
+
+**Viewer** — receives formatter-generated mesh data, never reads the Replicad source directly. Its camera persists across builds and panel moves.
+
+**Parametric Controls** — reads the literal `defaultParams` values; changes replace only the exact matching tokens in the editor source and rebuild. No hidden parameter state.
+
+## The file model
+
+Source is an ordinary JavaScript file; opening, editing and saving uses the user's files. No backend, server-side storage, accounts, collaboration or file diffs.
 
 ```js
 const defaultParams = { width: 60, height: 20 };
@@ -23,26 +44,19 @@ const main = (replicad, params) =>
   replicad.makeBaseBox(params.width, 40, params.height);
 ```
 
-The same source can be opened or saved as a normal .js file. The source and mesh data are in memory only until saved/exported by the user. The layout preference is the only persistent application data.
+Only run trusted model files: moving evaluation to a Web Worker protects the UI but is **not** a security sandbox for hostile JavaScript.
 
-## Controls
+## Docking UX
 
-| Interaction | Behaviour |
-| --- | --- |
-| Drag a panel tab onto a box centre | Dock as another tab |
-| Drag a panel tab onto an edge | Create a split box |
-| Drag a splitter gutter | Resize adjoining boxes |
-| Tab / Shift+Tab | Switch tabs in the focused box (outside typing controls) |
-| Space | Maximise / restore the focused box (outside typing controls) |
-| Double-click box header / ⛶ | Maximise / restore |
-| Ctrl/⌘ + K | Search commands |
-| Ctrl/⌘ + Enter | Run current script |
-| Ctrl/⌘ + S | Save current script |
-| Command palette → Reset panel layout | Restore five-box bento |
+Only two visual targets:
+- **Box** — outline the whole box; drop the dragged tab to dock alongside existing tabs.
+- **Gap** — a single line at a box edge or existing splitter; drop to split the workspace.
 
-When typing in CodeMirror or a form control, Tab retains its normal editing/focus behaviour; use a box header to return to panel navigation. Responsive narrow screens arrange the boxes vertically rather than compressing them to unreadable strips.
+Drag a divider to resize. Tab / Shift+Tab cycles tabs in the focused box **outside text inputs**; Space maximises/restores that box. Double-click the box header or use its maximize button for the same action. Ctrl/⌘+K opens searchable commands; Ctrl/⌘+Enter runs the model; Ctrl/⌘+S saves it. Reset the bento layout from the command palette.
 
-## Development
+This first version uses native desktop drag-and-drop; narrow mobile layouts stack boxes vertically and support maximizing. Touch-native docking is not yet implemented.
+
+## Build and tests
 
 ```bash
 npm install
@@ -51,11 +65,4 @@ npm run build
 npm run dev
 ```
 
-The Testlab deploy workflow builds this prototype before assembling the gallery. Vite compiles worker and WASM assets. Testlab injects its shared Home/theme controls into the published index; the local dev preview intentionally does not duplicate those controls.
-
-## Scope and caveats
-
-- This prototype has five single-instance panels; it doesn't yet implement a general plugin/extension API, arbitrary panel duplication, or saved named layout presets.
-- It does not include the separate Replicad Studio experiment's exact NURBS 3DM exporter; STEP is the native precise CAD export offered here, while the Three.js viewer uses tessellated display meshes.
-- HTML5 drag-and-drop works best with a mouse/trackpad. Mobile uses stacked boxes and the maximize button; touch-native docking can be a later iteration.
-- Replicad models are JavaScript, not sandbox-safe documents. A Web Worker protects UI responsiveness but does **not** prevent scripts from using browser network APIs. Only run models you trust.
+Tests cover the layout tree, drop-target classification, parameter-source edits, and geometry adapter conversion contracts. The Testlab deployment workflow builds this prototype before assembling the gallery. Gallery Home and theme controls are injected by the Testlab build.

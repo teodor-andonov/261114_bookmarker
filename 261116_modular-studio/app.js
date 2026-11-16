@@ -7,9 +7,7 @@ import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { bracketMatching, indentOnInput } from "@codemirror/language";
-import * as prettier from "prettier/standalone";
-import prettierBabel from "prettier/plugins/babel";
-import prettierEstree from "prettier/plugins/estree";
+import { listConversions, SOURCE_FORMAT } from "./geometry-formats.js";
 import { createWorkspace } from "./layout.js";
 import { EXAMPLES } from "./examples.js";
 import { editParameter } from "./param-source.js";
@@ -45,8 +43,9 @@ let nextId = 0;
 let autoBuildTimer = null;
 let parameterValues = {};
 let previousSchema = null;
-let previewSource = null;
-let formattedSource = null;
+let formatterInfo = null;
+const pendingConversions = new Map();
+const formatStatuses = new Map();
 let fitted = false;
 
 function setStatus(message, kind = "") {
@@ -100,10 +99,10 @@ runnerRoot.append(runnerActions, runnerStats, runLog);
 panels.runner = runnerRoot;
 
 const formatterRoot = el("div", "panel-root formatter-root");
-const formatterControls = el("div", "formatter-controls");
-const formatterActions = el("div", "formatter-actions");
-const formatterOutput = el("pre", "formatter-output", "Prettier formatting preview appears here.");
-formatterRoot.append(formatterControls, formatterActions, formatterOutput);
+const formatterInput = el("div", "format-input");
+const formatterOutputs = el("div", "format-outputs");
+const formatterFoot = el("p", "format-note", "Format adapters convert worker-owned geometry; the viewer consumes the same geometry document as exports.");
+formatterRoot.append(formatterInput, formatterOutputs, formatterFoot);
 panels.formatter = formatterRoot;
 
 const paramRoot = el("div", "panel-root params-root");
@@ -147,9 +146,9 @@ function sourceEdited() {
   built = false;
   lastBuildId = -1;
   clearTimeout(autoBuildTimer);
-  formattedSource = null;
-  previewSource = null;
-  formatterOutput.textContent = "Source changed. Preview formatting to refresh.";
+  formatterInfo = null;
+  formatStatuses.clear();
+  renderFormatter();
   publish("source:changed", source());
 }
 function replaceSource(value, name, fileHandle = null) {
@@ -175,6 +174,9 @@ function runModel() {
   built = false;
   const id = ++nextId;
   lastBuildId = id;
+  formatterInfo = null;
+  formatStatuses.clear();
+  renderFormatter();
   setStatus("Building model…");
   runnerStats.textContent = "Computing geometry…";
   runLog.textContent = "Replicad worker is processing the current source.";
@@ -184,57 +186,100 @@ function autoRun() {
   clearTimeout(autoBuildTimer);
   autoBuildTimer = setTimeout(runModel, 260);
 }
-function exportModel(format) {
-  if (!built) { setStatus("Run the current model before exporting.", "error"); return; }
+function requestConversion(target) {
+  if (!built || !formatterInfo) {
+    setStatus("Build the current model before converting.", "error");
+    return;
+  }
+  if (!listConversions(formatterInfo.sourceFormat).some(item => item.target === target)) {
+    setStatus("No conversion adapter for " + target, "error");
+    return;
+  }
   const id = ++nextId;
-  setStatus("Preparing " + format.toUpperCase() + "…");
-  worker.postMessage({ type: "export", id, format });
+  pendingConversions.set(id, { buildId: lastBuildId, target });
+  formatStatuses.set(target, "Converting…");
+  renderFormatter();
+  if (target !== "viewer/mesh") setStatus("Converting geometry → " + target.toUpperCase() + "…");
+  worker.postMessage({ type: "convert", id, buildId: lastBuildId, target });
+}
+function exportModel(format) {
+  requestConversion(format);
 }
 worker.addEventListener("message", ({ data }) => {
+  if (data.type === "error" && data.operation === "convert") {
+    const request = pendingConversions.get(data.id);
+    pendingConversions.delete(data.id);
+    if (!request || request.buildId !== lastBuildId) return;
+    formatStatuses.set(request.target, "Failed");
+    renderFormatter();
+    setStatus("Formatter: " + data.message, "error");
+    if (request.target === "viewer/mesh") {
+      placeholder.hidden = false;
+      placeholder.textContent = "Could not generate viewer geometry.";
+    }
+    return;
+  }
   if (data.type === "error") {
-    if (data.id !== lastBuildId && data.id < lastBuildId) return;
+    if (data.id !== lastBuildId) return;
+    built = false;
+    formatterInfo = null;
+    renderFormatter();
     setStatus(data.message, "error");
     runLog.textContent = [...(data.logs || []), "ERROR  " + data.message].join("\n");
     runnerStats.textContent = "Build failed";
-    if (data.id === lastBuildId) placeholder.hidden = false;
+    placeholder.hidden = false;
+    placeholder.textContent = "Model build failed. See runner.";
     return;
   }
-  if (data.type === "exported") {
-    const name = filename.replace(/\.js$/i, "." + data.format);
-    download(new Blob([data.bytes], { type: "application/octet-stream" }), name);
-    setStatus(data.format.toUpperCase() + " ready", "ok");
+  if (data.type === "converted") {
+    const request = pendingConversions.get(data.id);
+    pendingConversions.delete(data.id);
+    if (!request || request.buildId !== lastBuildId || data.buildId !== lastBuildId) return;
+    try {
+      if (request.target === "viewer/mesh") {
+        drawGeometry(data.meshes);
+        placeholder.hidden = true;
+        setStatus("Model ready · " + data.meshes.length +
+          (data.meshes.length === 1 ? " shape" : " shapes"), "ok");
+        publish("geometry:preview", { count: data.meshes.length });
+        formatStatuses.set(request.target, "Displayed");
+      } else {
+        const exportName = filename.replace(/\.js$/i, data.extension);
+        download(new Blob([data.bytes], { type: "application/octet-stream" }), exportName);
+        formatStatuses.set(request.target, "Exported");
+        setStatus(request.target.toUpperCase() + " exported", "ok");
+      }
+    } catch (error) {
+      formatStatuses.set(request.target, "Failed");
+      setStatus("Formatter: " + error.message, "error");
+    }
+    renderFormatter();
     return;
   }
   if (data.type !== "built" || data.id !== lastBuildId) return;
-  try {
-    drawGeometry(data.meshes);
-    built = true;
-    const newParams = data.defaults;
-    const changed = !previousSchema ||
-      Object.keys(previousSchema).length !== Object.keys(newParams).length ||
-      Object.keys(newParams).some(key => !Object.is(previousSchema[key], newParams[key]));
-    parameterValues = { ...newParams };
-    if (changed) renderParameters();
-    previousSchema = { ...newParams };
-    placeholder.hidden = true;
-    const count = data.meshes.length;
-    runnerStats.textContent = count + (count === 1 ? " shape" : " shapes") + " · " + data.duration + " ms (incl. initial WASM load)";
-    runLog.textContent = [...(data.logs || []), "Build successful."].join("\n");
-    setStatus("Model ready · " + count + (count === 1 ? " shape" : " shapes"), "ok");
-    publish("geometry:built", { count, duration: data.duration });
-  } catch (error) {
-    setStatus("Viewer failed: " + error.message, "error");
-  }
+  built = true;
+  formatterInfo = data.geometry;
+  formatStatuses.clear();
+  const newParams = data.defaults;
+  const changed = !previousSchema ||
+    Object.keys(previousSchema).length !== Object.keys(newParams).length ||
+    Object.keys(newParams).some(key => !Object.is(previousSchema[key], newParams[key]));
+  parameterValues = { ...newParams };
+  if (changed) renderParameters();
+  previousSchema = { ...newParams };
+  const count = data.geometry.count;
+  runnerStats.textContent = count + (count === 1 ? " shape" : " shapes") +
+    " · " + data.duration + " ms (incl. initial WASM load)";
+  runLog.textContent = [...(data.logs || []), "Geometry document built. Sending to formatter."].join("\n");
+  setStatus("Formatting viewer geometry…");
+  publish("geometry:built", { count, duration: data.duration });
+  requestConversion("viewer/mesh");
 });
 worker.addEventListener("error", event => {
   setStatus("CAD worker crashed: " + event.message, "error");
   runnerStats.textContent = "Worker error";
 });
-runnerActions.append(
-  button("▶ Run", runModel, "primary"),
-  button("STEP ↓", () => exportModel("step")),
-  button("STL ↓", () => exportModel("stl")),
-);
+runnerActions.append(button("▶ Run", runModel, "primary"));
 subscribe("status", ({ message, kind }) => {
   if (kind === "error" && !runLog.textContent.includes(message)) runLog.textContent += "\n" + message;
 });
@@ -315,46 +360,38 @@ function renderParameters() {
   for (const [key, value] of entries) paramList.append(parameterRow(key, value));
 }
 
-// Prettier is a processor; the panel previews the output and applies it on request.
-const semiLabel = el("label", "format-option", "Semicolons");
-const semi = el("input"); semi.type = "checkbox"; semi.checked = true;
-semiLabel.prepend(semi);
-const quoteLabel = el("label", "format-option", "Single quotes");
-const singleQuote = el("input"); singleQuote.type = "checkbox";
-quoteLabel.prepend(singleQuote);
-formatterControls.append(semiLabel, quoteLabel);
-async function previewFormat() {
-  try {
-    formatterOutput.textContent = "Formatting…";
-    const input = source();
-    formattedSource = await prettier.format(input, {
-      parser: "babel", plugins: [prettierBabel, prettierEstree],
-      semi: semi.checked, singleQuote: singleQuote.checked,
-      tabWidth: 2, printWidth: 90,
-    });
-    previewSource = input;
-    formatterOutput.textContent = formattedSource;
-    setStatus("Formatting preview ready", "ok");
-  } catch (error) {
-    formattedSource = null; previewSource = null;
-    formatterOutput.textContent = error.message;
-    setStatus("Formatter: " + error.message, "error");
+// Formatter is a processor with typed source → target geometry adapters.
+// The panel visualises the conversion graph and triggers export commands.
+function renderFormatter() {
+  formatterInput.replaceChildren();
+  const label = el("div", "format-kicker", "INPUT");
+  const name = el("div", "format-input-name", formatterInfo?.sourceFormat || SOURCE_FORMAT);
+  const detail = el("div", "format-input-detail",
+    formatterInfo
+      ? formatterInfo.count + (formatterInfo.count === 1 ? " shape" : " shapes") + " · " + formatterInfo.units
+      : "Run a model to produce geometry");
+  formatterInput.append(label, name, detail);
+  formatterOutputs.replaceChildren(el("div", "format-kicker", "OUTPUT ADAPTERS"));
+  const adapters = listConversions(formatterInfo?.sourceFormat || SOURCE_FORMAT);
+  for (const adapter of adapters) {
+    const row = el("div", "format-row");
+    const text = el("div", "format-row-text");
+    const title = el("div", "format-title", adapter.label);
+    const description = el("div", "format-description", adapter.representation + " · " + adapter.fidelity);
+    const note = el("div", "format-description", adapter.description);
+    text.append(title, description, note);
+    const actions = el("div", "format-row-actions");
+    const state = el("span", "format-state", formatStatuses.get(adapter.target) || (adapter.automatic ? "Automatic" : "Ready"));
+    const action = button(adapter.automatic ? "Refresh" : "Export ↓",
+      () => requestConversion(adapter.target));
+    action.disabled = !built || !formatterInfo;
+    action.title = adapter.description;
+    actions.append(state, action);
+    row.append(text, actions);
+    formatterOutputs.append(row);
   }
 }
-async function applyFormatting() {
-  if (!formattedSource || previewSource !== source()) await previewFormat();
-  if (!formattedSource || previewSource !== source()) return;
-  if (formattedSource !== source()) {
-    editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: formattedSource } });
-  }
-  setStatus("Formatted source applied", "ok");
-  formatterOutput.textContent = "Formatting applied to the editor. Undo is available.";
-}
-formatterActions.append(button("Preview", previewFormat), button("Apply to editor", applyFormatting, "primary"));
-for (const control of [semi, singleQuote]) control.addEventListener("change", () => {
-  formattedSource = null; previewSource = null;
-  formatterOutput.textContent = "Options changed. Preview again.";
-});
+renderFormatter();
 
 // Three.js holds the scene/camera independently from the dock layout.
 const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
@@ -486,8 +523,7 @@ const commands = [
   ["Save as…", () => saveModel(true)],
   ["New from pavilion example", () => loadExample(0)],
   ["New from rounded block example", () => loadExample(1)],
-  ["Preview formatting", previewFormat],
-  ["Apply formatting", applyFormatting],
+  ["Refresh viewer geometry", () => requestConversion("viewer/mesh")],
   ["Fit geometry to view", fitModel],
   ["Export STEP", () => exportModel("step")],
   ["Export STL", () => exportModel("stl")],
