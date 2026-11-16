@@ -61,7 +61,7 @@
 .cover-editor details {border-top:1px solid #e3e5df;padding-top:10px}.cover-editor details summary{cursor:pointer;font-size:11px;color:#777e78}
 .cover-editor details label {margin-top:10px}
 .cover-editor .cover-editor-note {margin:0;color:#858c84;font-size:11px;line-height:1.5}
-.bookmark-card .preview {background:#f0f1ee}
+.bookmark-card .preview {background:transparent}
 @media(max-width:770px){
   .preview-art.simple-cover{padding:12px 12px 9px}
   .simple-cover-icon{width:58px;height:58px}
@@ -87,8 +87,7 @@
   .cover-editor{padding:11px}.cover-upload-row .upload-cover-button span{display:none}
 }
 
-/* The title is already part of the simple cover in grid view; avoid repeating it below. */
-.bookmark-grid:not(.list-view) .bookmark-card.no-cover-image .bookmark-body h3 { display:none; }
+/* Titles remain visible below the blank image area when extraction has no image. */
 
 
 /* Unified automatic preview + single command launcher. */
