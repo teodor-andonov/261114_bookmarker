@@ -99,6 +99,15 @@ export function firstArticleImage(markdown, pageUrl) {
   return '';
 }
 
+export function articleExcerpt(markdown) {
+  return String(markdown || '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, ' ')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/[#>*_~`|]/g, ' ')
+    .replace(/\s+/g, ' ').trim().slice(0, 320);
+}
+
 export function parsePublicationDate(value) {
   if (!value) return '';
   const match = String(value).match(/(\d{4}-\d{2}-\d{2})(?!\d)/);
@@ -126,7 +135,7 @@ export async function getMetadata(urlString, sharedTitle = '') {
     return {
       ...basic,
       title: String(metadata.title || basic.title).trim().slice(0, 500),
-      description: String(metadata.description || '').trim().slice(0, 5000),
+      description: String(metadata.description || articleExcerpt(contentMarkdown)).trim().slice(0, 5000),
       author: String(metadata.author || '').trim().slice(0, 300),
       siteName: String(metadata.site || metadata.domain || basic.siteName).trim().slice(0, 200),
       published: parsePublicationDate(metadata.published),
