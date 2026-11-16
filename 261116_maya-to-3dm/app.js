@@ -117,7 +117,7 @@ function showResults() {
     body.append(name, detail);
     const flag = document.createElement("span");
     flag.className = "chip";
-    flag.textContent = baked.levels + "× smooth";
+    flag.textContent = object.appliedLevels + "× smooth";
     row.append(dot, body, flag);
     $("objects").append(row);
   }
@@ -168,7 +168,7 @@ async function openFile(file) {
 
 function rebuild(){
   if(!parsed)return;
-  baked=prepareMeshes(parsed,Number($("detail").value));
+  baked=prepareMeshes(parsed,$("detail").value);
   renderObjects();
   showResults();
 }

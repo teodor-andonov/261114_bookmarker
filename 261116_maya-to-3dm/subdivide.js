@@ -111,13 +111,14 @@ export function subdivideCage(input,levels=2,{maxFaces=800000}={}) {
   return mesh;
 }
 
-export function prepareMeshes(parsed,levels=2) {
+export function prepareMeshes(parsed,levels="maya") {
   const objects=[],warnings=[...parsed.warnings],failures=[];
   for(const object of parsed.objects){
     try {
-      const mesh=subdivideCage(object,levels);
+      const appliedLevels=levels==="maya"?(object.smoothPreview?object.smoothLevel:0):Number(levels);
+      const mesh=subdivideCage(object,appliedLevels);
       if(!mesh.faces.length)throw new Error("Mesh has no faces.");
-      objects.push(mesh);
+      objects.push({...mesh,appliedLevels});
     }catch(error){
       failures.push({name:object.name,reason:error.message});
     }
