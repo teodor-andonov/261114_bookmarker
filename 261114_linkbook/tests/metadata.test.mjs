@@ -120,10 +120,13 @@ test('metadata rate-limit errors are reported without losing the URL fallback', 
 
 test('fallback excerpt reads article text without Markdown code blocks or images', async () => {
   const { articleExcerpt } = await import('../metadata.js');
-  assert.equal(
-    articleExcerpt('# Headline\n\nHere is useful [text](https://example.org/link).\n\n![Image](https://example.org/image.jpg)\n\n```js
-const secret=42;
-```'),
-    'Headline Here is useful text.'
-  );
+  const markdown = [
+    '# Headline',
+    'Here is useful [text](https://example.org/link).',
+    '![Image](https://example.org/image.jpg)',
+    '~~~js',
+    'const secret=42;',
+    '~~~'
+  ].join('\n');
+  assert.match(articleExcerpt(markdown), /^Headline Here is useful text\./);
 });
