@@ -36,10 +36,7 @@
 :root[data-theme="dark"] input::placeholder,
 :root[data-theme="dark"] textarea::placeholder {color:#92a49b}
 :root[data-theme="dark"] .bookmark-card:hover {box-shadow:0 9px 25px #0007}
-:root[data-theme="dark"] .preview,
-:root[data-theme="dark"] .bookmark-card .preview,
-:root[data-theme="dark"] .preview-art.simple-cover,
-:root[data-theme="dark"] .preview-art {background:#2d3731}
+:root[data-theme="dark"] .bookmark-card .preview {background:transparent}
 :root[data-theme="dark"] .simple-cover-domain,
 :root[data-theme="dark"] .simple-cover-title,
 :root[data-theme="dark"] .bookmark-body h3 {color:#e3ece5}
