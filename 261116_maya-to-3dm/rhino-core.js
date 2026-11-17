@@ -56,7 +56,7 @@ export function createMesh3dmSession(meta,rhino){
     const mat=new rhino.Material();
     try{
       mat.name=object.materialName;
-      mat.diffuseColor=[rgb.r,rgb.g,rgb.b,255];
+      mat.diffuseColor={r:rgb.r,g:rgb.g,b:rgb.b,a:255};
       const index=doc.materials().count;
       doc.materials().add(mat);
       if(doc.materials().count!==index+1)
