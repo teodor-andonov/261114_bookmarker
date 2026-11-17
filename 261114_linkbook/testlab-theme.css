@@ -76,3 +76,22 @@
 :root[data-theme="dark"] .input-submit-hint,
 :root[data-theme="dark"] .card-hint{color:#a9b7aa}
 :root[data-theme="dark"] .dialog-fields textarea[readonly]{background:#1a2420;color:#c8d6cb}
+
+
+:root[data-theme="dark"] .screenshots-dialog {
+  background:#222b26;color:#e6ede8;border-color:#3e4b42;
+}
+:root[data-theme="dark"] .screenshots-url-form {
+  background:#19241e;border-color:#4a5a4f;
+}
+:root[data-theme="dark"] .screenshots-url-form input {color:#e6ede8}
+:root[data-theme="dark"] .screenshots-image-frame {
+  background:#161c19;border-color:#3e4b42;
+}
+:root[data-theme="dark"] .screenshots-hint,
+:root[data-theme="dark"] .screenshots-enter-hint,
+:root[data-theme="dark"] .screenshots-note,
+:root[data-theme="dark"] .screenshots-footnote,
+:root[data-theme="dark"] .screenshots-provider-note,
+:root[data-theme="dark"] .screenshots-status,
+:root[data-theme="dark"] .screenshots-image-frame p {color:#a9b6ae}
