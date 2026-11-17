@@ -1,6 +1,14 @@
-import { normalizeUrl, safeImageUrl } from './metadata.js';
+import { normalizeUrl } from './metadata.js';
 
-export const SCREENSHOT_VIEWPORT = Object.freeze({ width: 1200, height: 750 });
+// Thum.io free tier uses a fixed 1200px-wide browser viewport.
+// width controls the returned image size; crop controls pixels taken from the
+// original screen. Neither option changes the rendered responsive breakpoint.
+export const THUM_DEFAULTS = Object.freeze({
+  width: 600,
+  crop: 750,
+  format: 'auto',
+  maxAge: 24
+});
 
 export function validateScreenshotTarget(rawUrl) {
   const url = normalizeUrl(rawUrl);
@@ -18,43 +26,27 @@ export function validateScreenshotTarget(rawUrl) {
   return url;
 }
 
-// Screenshot-only request (no duplicate metadata or full-page capture).
-export function microlinkRequestUrl(targetUrl) {
-  const target = validateScreenshotTarget(targetUrl);
-  const api = new URL('https://api.microlink.io/');
-  for (const [key, value] of Object.entries({
-    url: target,
-    screenshot: 'true',
-    'screenshot.fullPage': 'false',
-    'screenshot.type': 'jpeg',
-    'screenshot.quality': '75',
-    'viewport.width': String(SCREENSHOT_VIEWPORT.width),
-    'viewport.height': String(SCREENSHOT_VIEWPORT.height),
-    'viewport.deviceScaleFactor': '1',
-    meta: 'false'
-  })) api.searchParams.set(key, value);
-  return api.href;
-}
-
-// Free Thum.io uses a 1200px viewport. crop/750 captures only the first screen,
-// width/600 scales it for inexpensive previews, and noanimate waits for the final frame.
-export function thumImageUrl(targetUrl) {
-  const target = validateScreenshotTarget(targetUrl);
-  return 'https://image.thum.io/get/width/600/crop/750/noanimate/' + target;
-}
-
-export function parseMicrolinkResult(payload) {
-  if (!payload || payload.status !== 'success') {
-    const code = String(payload?.code || '');
-    const message = String(payload?.message || payload?.data?.message || 'Screenshot unavailable');
-    throw new Error([code, message].filter(Boolean).join(' — ').slice(0, 240));
+function integerOption(value, fallback, min, max, label) {
+  const selected = value === undefined ? fallback : Number(value);
+  if (!Number.isInteger(selected) || selected < min || selected > max) {
+    throw new Error(label + ' must be an integer between ' + min + ' and ' + max + '.');
   }
-  const image = safeImageUrl(payload.data?.screenshot?.url);
-  if (!image) throw new Error('Microlink did not return a screenshot URL.');
-  return {
-    url: image,
-    width: Number(payload.data.screenshot.width) || null,
-    height: Number(payload.data.screenshot.height) || null,
-    format: String(payload.data.screenshot.type || '')
-  };
+  return selected;
+}
+
+// All configurable options used here are supported by Thum.io's free URL API.
+// noanimate returns the final still frame instead of streaming a loader GIF.
+export function thumImageUrl(targetUrl, options = {}) {
+  const target = validateScreenshotTarget(targetUrl);
+  const width = integerOption(options.width, THUM_DEFAULTS.width, 100, 1200, 'Output width');
+  const crop = integerOption(options.crop, THUM_DEFAULTS.crop, 100, 1200, 'Capture height');
+  const maxAge = integerOption(options.maxAge, THUM_DEFAULTS.maxAge, 0, 8760, 'Cache maximum age');
+  const format = options.format ?? THUM_DEFAULTS.format;
+  if (!['auto','jpg','png'].includes(format)) throw new Error('Unsupported image format.');
+  const modifiers = [
+    'width', String(width), 'crop', String(crop), 'maxAge', String(maxAge),
+    ...(format === 'jpg' ? ['allowJPG'] : format === 'png' ? ['png'] : []),
+    'noanimate'
+  ];
+  return 'https://image.thum.io/get/' + modifiers.join('/') + '/' + target;
 }
