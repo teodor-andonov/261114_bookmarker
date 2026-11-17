@@ -10,16 +10,24 @@ Paste a URL and press **Enter**. Linkbook immediately saves it to IndexedDB, the
 
 The hosted API does **not** return explicit `image` or `favicon` fields, even though the Defuddle library can identify them. Linkbook therefore selects the first usable image **embedded in the article Markdown**, if any. This is not guaranteed to be a hero image. Known YouTube video IDs use YouTube's deterministic thumbnail URL, which is why YouTube works more reliably. When no image is found or it fails to load, the cover area is intentionally **empty**. The bookmark's favicon, domain and title remain visible below the cover area on the card. Favicons use the target site's `/favicon.ico` fallback; some websites do not publish one there. Linkbook does not invent covers or use a second metadata service.
 
-## Side-by-side screenshot service comparison (experimental)
+## Thum.io screenshot preview (experimental)
 
-Run **Commands → Compare screenshots: Microlink vs Thum.io** (or Ctrl/⌘+K, search `compare`). Use the URL already pasted into the Save field, the selected bookmark, or enter another public URL in the comparison dialog and press **Enter**. Both previews appear side by side; on mobile they stack. **Esc** closes the dialog.
+Run **Commands → Preview screenshot with Thum.io** (or Ctrl/⌘+K, search `screenshot`). It starts with the URL in the Save field or selected bookmark; enter a public URL to preview another site. Each capture is on demand and temporary. **Enter** in the URL field captures with the selected settings; **Esc** closes the dialog. There is no extra toolbar button.
 
-- **Microlink**: `api.microlink.io`, screenshot-only JSON request (`meta=false`), desktop `1200×750`, JPEG at quality 75, no scrolling. After receiving `data.screenshot.url`, Linkbook displays the CDN image. Errors and daily free-tier limits are reported.
-- **Thum.io**: direct `image.thum.io/get/width/600/crop/750/noanimate/...` image endpoint. Its free viewport width defaults to 1200px; the first 750px are cropped and resized to 600px wide. A failed image load is reported, but Thum.io does not expose structured error details via an image tag.
+Thum.io free-tier settings, available directly in the preview dialog:
 
-Comparison is **opt-in**, one request per provider per comparison. No screenshot requests happen in the bookmark grid, and neither result replaces the existing Defuddle/YouTube cover or enters IndexedDB. Each third-party service receives **only the target URL** (no notes/tags). Local/private URLs are rejected. Provider quotas, bot protection, cookie banners, asynchronous rendering, and Thum.io's possible initial loader can affect results. Microlink publicly advertises 25 free requests/day, and Thum.io advertises 1,000 free impressions/month; verify current terms before heavier use.
+| Setting | Default | Choices |
+| --- | --- | --- |
+| Output image width (`width`) | 600px | 400 / 600 / 800 / 1200 |
+| Original screenshot crop height (`crop`) | 750px | 500 / 750 / 900 / 1200 |
+| Image format | Automatic | Automatic / JPG if possible / PNG |
+| Maximum cache age (`maxAge`) | 24 hours | 0 / 24 / 168 hours |
 
-Docs: https://microlink.io/docs/api/parameters/screenshot and https://www.thum.io/documentation/api/url .
+The **browser viewport width stays 1200px** on Thum.io's free tier; changing output width only resizes the returned image. `noanimate` is enabled for a final still preview. Paid Better tier is needed for arbitrary browser viewport width, device emulation, waiting after load or full-page screenshots. The free tier may show branded loading and can fail on sites with bot protection or authentication.
+
+**Defuddle remains active** for metadata, titles and locally saved searchable article Markdown. Screenshot previews do not modify existing Defuddle-derived covers or enter IndexedDB. They only send the target URL to Thum.io—not local notes, tags or the bookmark database. Local/private targets are rejected. Thum.io advertises the first 1,000 screenshot hits free (check current usage terms before running bulk previews).
+
+Documentation: https://www.thum.io/documentation/api/url
 
 ## Commands and refresh
 

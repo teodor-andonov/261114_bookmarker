@@ -83,43 +83,64 @@
     <div class="screenshots-shell">
       <div class="screenshots-heading">
         <div>
-          <div class="eyebrow">SCREENSHOT EXPERIMENT</div>
-          <h2 id="screenshotCompareTitle">Compare first-screen captures</h2>
+          <div class="eyebrow">SCREENSHOT PREVIEW</div>
+          <h2 id="screenshotCompareTitle">Thum.io — first screen</h2>
         </div>
         <span class="screenshots-hint">Esc to close</span>
       </div>
-      <form id="screenshotCompareForm" class="screenshots-url-form">
-        <label class="sr-only" for="screenshotCompareUrl">Website URL</label>
-        <input id="screenshotCompareUrl" type="url" inputmode="url" required
-          placeholder="https://example.com" autocomplete="url" />
-        <span class="screenshots-enter-hint">Enter ↵</span>
+      <form id="screenshotCompareForm">
+        <div class="screenshots-url-form">
+          <label class="sr-only" for="screenshotCompareUrl">Website URL</label>
+          <input id="screenshotCompareUrl" type="url" inputmode="url" required
+            placeholder="https://example.com" autocomplete="url" />
+          <span class="screenshots-enter-hint">Enter ↵</span>
+        </div>
+        <div class="screenshots-settings" aria-label="Screenshot settings">
+          <label>Image width
+            <select id="thumWidth" name="width">
+              <option value="400">400 px</option>
+              <option value="600" selected>600 px</option>
+              <option value="800">800 px</option>
+              <option value="1200">1200 px</option>
+            </select>
+          </label>
+          <label>Crop height
+            <select id="thumCrop" name="crop">
+              <option value="500">500 px</option>
+              <option value="750" selected>750 px</option>
+              <option value="900">900 px</option>
+              <option value="1200">1200 px</option>
+            </select>
+          </label>
+          <label>Image format
+            <select id="thumFormat" name="format">
+              <option value="auto" selected>Automatic</option>
+              <option value="jpg">JPG if possible</option>
+              <option value="png">PNG</option>
+            </select>
+          </label>
+          <label>Cache maximum age
+            <select id="thumMaxAge" name="maxAge">
+              <option value="0">Refresh if stale (0h)</option>
+              <option value="24" selected>24 hours</option>
+              <option value="168">7 days</option>
+            </select>
+          </label>
+        </div>
       </form>
-      <p class="screenshots-note">Only the website URL is sent to Microlink and Thum.io when you request a comparison. No notes or tags are shared. Previews are temporary and do not replace your saved covers.</p>
-      <div class="screenshots-grid">
-        <section class="screenshots-provider" aria-label="Microlink screenshot">
-          <div class="screenshots-provider-heading">
-            <h3>Microlink</h3>
-            <span class="screenshots-status" id="microlinkStatus" aria-live="polite">Not requested</span>
-          </div>
-          <div class="screenshots-image-frame" id="microlinkFrame">
-            <img id="microlinkImage" referrerpolicy="no-referrer" alt="Microlink first-viewport screenshot" hidden />
-            <p id="microlinkPlaceholder">Run a comparison to preview this website.</p>
-          </div>
-          <p class="screenshots-provider-note">1200 × 750 viewport · JPEG · Free tier: limited daily requests</p>
-        </section>
-        <section class="screenshots-provider" aria-label="Thum.io screenshot">
-          <div class="screenshots-provider-heading">
-            <h3>Thum.io</h3>
-            <span class="screenshots-status" id="thumStatus" aria-live="polite">Not requested</span>
-          </div>
-          <div class="screenshots-image-frame" id="thumFrame">
-            <img id="thumImage" referrerpolicy="no-referrer" alt="Thum.io first-viewport screenshot" hidden />
-            <p id="thumPlaceholder">Run a comparison to preview this website.</p>
-          </div>
-          <p class="screenshots-provider-note">1200px viewport · First 750px · Free tier may show branded loading</p>
-        </section>
-      </div>
-      <p class="screenshots-footnote">If a provider fails, the other preview remains available. Screenshots can differ because of cookies, location, rendering and site restrictions.</p>
+      <p class="screenshots-note">Enter the URL and press Enter to capture with these settings. Thum.io receives only the website URL. Your notes and tags are never shared. Each new request may count against its usage allowance.</p>
+      <section class="screenshots-provider" aria-label="Thum.io screenshot">
+        <div class="screenshots-provider-heading">
+          <h3>First-screen screenshot</h3>
+          <span class="screenshots-status" id="thumStatus" aria-live="polite">Not requested</span>
+        </div>
+        <div class="screenshots-image-frame" id="thumFrame">
+          <img id="thumImage" referrerpolicy="no-referrer" alt="Thum.io first-screen screenshot" hidden />
+          <p id="thumPlaceholder">Enter a URL above to preview.</p>
+        </div>
+        <p class="screenshots-provider-note">Free tier renders at a fixed 1200px desktop viewport width. Width above changes output resolution; crop changes how much of the first screen is shown. Full-page, custom viewport and delayed capture require a paid plan.</p>
+      </section>
+      <p class="screenshots-footnote">Preview only. This doesn't replace your existing Defuddle article metadata or bookmark covers.</p>
     </div>
   </dialog>
   <script type="module" src="./app.js"></script>
