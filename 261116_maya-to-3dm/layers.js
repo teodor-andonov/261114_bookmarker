@@ -1,44 +1,42 @@
-// Maya's DAG is a hierarchy of transforms and shapes. One Rhino layer is
-// created for every source transform path, with its original parent nesting.
+// Maya display layers are flat sets, distinct from the scene's DAG hierarchy.
+// Colours are read from Maya RGB overrides where present, otherwise seeded
+// pseudo-randomly per layer name so reimports have predictable colours.
 const PALETTE=[
   [117,165,185],[183,150,120],[145,173,142],[159,148,191],
-  [194,152,163],[121,175,174],[183,177,127],[151,169,181]
+  [194,152,163],[121,175,174],[183,177,127],[151,169,181],
+  [192,153,116],[139,175,163],[160,158,206],[197,166,137]
 ];
 export function objectLayerKey(object){
-  const parts=String(object?.path||"").split("|").filter(Boolean);
-  const parents=parts.slice(0,-1);
-  return parents.length?"|"+parents.join("|"):"|Ungrouped";
+  return object?.layerName||"Default";
 }
 export function layerColor(key){
+  if(key==="Default")return {r:150,g:157,b:165};
   let hash=2166136261;
-  for(const ch of key){hash=Math.imul(hash ^ ch.charCodeAt(0),16777619);}
+  for(const ch of String(key))hash=Math.imul(hash^ch.charCodeAt(0),16777619);
   const rgb=PALETTE[(hash>>>0)%PALETTE.length];
   return {r:rgb[0],g:rgb[1],b:rgb[2]};
 }
-export function layerCatalog(objects){
+export function layerCatalog(objects,declaredLayers=[]){
   const map=new Map();
+  for(const layer of declaredLayers){
+    if(!layer?.name||layer.name==="defaultLayer")continue;
+    map.set(layer.name,{
+      id:layer.name,name:layer.name,parent:null,depth:0,
+      directCount:0,count:0,color:layer.color||layerColor(layer.name),
+      visible:layer.visible!==false
+    });
+  }
   for(const object of objects){
-    const key=objectLayerKey(object);
-    const tokens=key.split("|").filter(Boolean);
-    let parent=null;
-    for(let i=0;i<tokens.length;i++){
-      const id="|"+tokens.slice(0,i+1).join("|");
-      if(!map.has(id))map.set(id,{
-        id,name:tokens[i],parent,depth:i,directCount:0,count:0,
-        color:layerColor(id)
-      });
-      map.get(id).count++;
-      if(i===tokens.length-1)map.get(id).directCount++;
-      parent=id;
-    }
+    const id=objectLayerKey(object);
+    if(!map.has(id))map.set(id,{
+      id,name:id,parent:null,depth:0,directCount:0,count:0,
+      color:object.layerColor||layerColor(id),visible:true
+    });
+    const entry=map.get(id);
+    entry.count++;entry.directCount++;
   }
   return [...map.values()];
 }
 export function visibleOnLayer(key,visibility={}){
-  const parts=key.split("|").filter(Boolean);
-  for(let i=0;i<parts.length;i++){
-    const id="|"+parts.slice(0,i+1).join("|");
-    if(visibility instanceof Map?visibility.get(id)===false:visibility[id]===false)return false;
-  }
-  return true;
+  return visibility instanceof Map ? visibility.get(key)!==false : visibility[key]!==false;
 }
