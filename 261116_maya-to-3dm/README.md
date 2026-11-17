@@ -1,49 +1,55 @@
 # Maya → Rhino · Geometry Converter
 
-Browser-only Maya ASCII (.ma) → Rhino 3DM **baked polygon meshes**, with native Rhino layers.
-Version **0.3.1-alpha.1**.
+Browser-only Autodesk Maya ASCII (.ma) → Rhino 3DM converter.
+Version **0.4.0-alpha.1**.
+
+## Layers and colours
+
+- **Only Maya displayLayer nodes become Rhino layers.** Maya DAG transform
+  groups and individual mesh objects no longer create layers.
+- Assignment follows connections from a display layer's `drawInfo` to a mesh
+  or ancestor transform's `drawOverride` (and compatible objectSet membership).
+- Objects without a recognised display-layer assignment go to one **Default**
+  layer. Empty explicitly named Maya display layers may also be included.
+- If a Maya display layer carries an explicit RGB override (`ovrgb`,
+  `overrideColorRGB`), it becomes the Rhino layer colour.
+- When no RGB is available, a stable pseudo-random colour derived from the
+  layer name is assigned. No colours change between repeated imports.
+- Shader RGB is collected through a mesh's `instObjGroups` → shadingEngine
+  `dagSetMembers` and the shader's `outColor` → shadingEngine
+  `surfaceShader` connections. Basic Maya lambert, phong, blinn, surfaceShader,
+  standardSurface and Arnold aiStandardSurface colours are supported.
+- Rhino objects receive **material assignments and display RGB** when a
+  supported explicit shader colour is available, independently of layer colour.
+  Materials with the same name and colour are deduplicated.
+- Unsupported texture networks, face-level materials, procedurally computed
+  colours, and external renderer features cannot be evaluated from static
+  Maya ASCII alone. Shader RGB can differ from colour-managed Maya viewport output.
 
 ## Workflow
 
-1. Open or drop a Maya ASCII file. No server, upload, or Maya installation is required.
-2. Inspect the shaded, Z-up viewport. Orbit/pan/zoom, toggle the grid or edges, and fit the view.
-3. Expand the **Layers** tree to inspect the Maya DAG transform hierarchy. Toggle any group (and descendants) on/off; **All** / **None** restore or hide the scene. Filter the tree by name.
-4. Choose **Smooth → As Maya**, or override subdivision level 0–3. Source up axis is Auto/Y/Z.
-5. Export the 3DM. The exporter runs in a Web Worker, advances one mesh at a time, reports progress, and allows cancellation without locking the preview.
+1. Open or drop a Maya ASCII file into the local-only browser UI.
+2. Inspect the subdivided meshes with the shaded preview, optional grid and edges.
+3. The layer panel shows Maya display layers (not transform groups). Toggle
+   visibility, use All/None or search by name.
+4. Choose Smooth As Maya (default) or override subdivision 0–3.
+5. Export Rhino 3DM. Export is performed in a cancellable Web Worker with
+   per-object progress and 3DM read-back verification.
 
-Layers in the Rhino file are **real nested Rhino layers**, not encoded into object names.
-They follow the Maya **DAG transform parent hierarchy**, rather than automatically guessing materials.
-Each mesh is placed on its corresponding leaf transform layer. The layer colors in preview also appear in Rhino.
+Hiding a layer only changes the preview unless **Only export visible** is checked.
 
-**Visibility affects the preview only by default.** Enable **Export visible layers only**
-to omit currently hidden mesh objects from the 3DM. Hiding a group hides its descendants.
+## Limitations
 
-## Notes and limitations
-
-- Uses polygon geometry stored in .ma, not Maya's evaluated dependency graph.
-- Catmull–Clark subdivision with available edge/vertex creases and mesh boundary behavior.
-  Does not evaluate procedural construction history, external references, animation, skinning
-  or connected crease-set networks. For exact results, bake geometry in Maya first.
-- Does **not** read Maya's separate displayLayer membership as material categories;
-  grouping derives from transform parents. Shapes without parent transforms use Ungrouped.
-- Preview and Rhino export both use the **same baked polygon geometry**.
-- Invalid objects are skipped without aborting other meshes; the completed 3DM is
-  reopened with rhino3dm to verify its contents.
-- The 3DM contains only mesh geometry, object names and layer organization.
-  No SubD objects, materials, textures, cameras or UV maps are transferred.
-- Rhino 3DM conversion and read-back happen entirely in a browser Web Worker.
-  Initial Maya parsing and subdivision still run on the UI thread; very large files
-  can cause a delay when opening or changing subdivision settings.
+- Only static polygon geometry stored in .ma is read. Maya construction history,
+  deformers, smooth-preview networks, external references and texture computations
+  are not evaluated. For exact visual output bake meshes in Maya.
+- The output comprises baked polygon meshes, real Rhino display layers and
+  basic RGB materials. No native Rhino SubD objects.
+- Not every Maya .ma serialisation connects display layers in an identical way.
+  Unrecognised memberships are safely assigned to Default instead of
+  inventing an object-per-layer hierarchy.
 - Binary .mb files are not supported.
 
 ## Development
 
 Run npm install, npm test, npm run dev, or npm run build.
-The Testlab repository builds this prototype through GitHub Actions.
-
-## UI refinements (0.3.1)
-
-- Replaced the radial viewport gradient with a solid background.
-- Compact scene statistics and simplified sidebar labels; removed redundant explanatory footer.
-- Mesh and Notices panels expand in normal document flow with their own bounded scroll areas.
-- Sidebar height follows available workspace height instead of assuming a fixed 66px header.
