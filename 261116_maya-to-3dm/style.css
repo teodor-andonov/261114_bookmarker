@@ -110,3 +110,8 @@ body{margin:0;min-height:100vh}button,select,input,label{font:inherit}button{cur
 .details .details-title{font-weight:600;color:var(--muted)}
 .details[open] .details-title{color:var(--fg)}
 .scene-info{position:absolute;right:16px;bottom:14px;font-size:10px;color:#a9bac5;pointer-events:none}
+
+/* Compact layer source switch; native groups remain independent of layers. */
+.layer-source{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 15px 10px;color:var(--muted);font-size:11px}
+.layer-source select{min-width:0;max-width:195px;flex:1;border:1px solid var(--line);background:var(--surface-high);color:var(--fg);padding:7px 9px;border-radius:6px;font-size:11px;cursor:pointer}
+.layer-source select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}

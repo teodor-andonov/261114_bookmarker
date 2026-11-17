@@ -14,7 +14,7 @@
         <div class="mark">M<span>→</span>R</div>
         <div>
           <h1>Maya → Rhino</h1>
-          <p>Maya layers & material colours → Rhino</p>
+          <p>Material layers & Maya groups → Rhino</p>
         </div>
       </div>
       <div class="top-actions">
@@ -72,9 +72,17 @@
               <button id="hide-all" title="Hide all layers">None</button>
             </div>
           </div>
+          <label class="layer-source" for="layer-source">
+            <span>Organise by</span>
+            <select id="layer-source" aria-label="Rhino layer source">
+              <option value="material" selected>Materials</option>
+              <option value="display">Maya display layers</option>
+            </select>
+          </label>
           <input id="layer-filter" class="layer-filter" placeholder="Filter layers…" aria-label="Filter layers">
-          <div class="layer-list" id="layer-list"><p class="quiet">Maya display layers will appear here.</p></div>
+          <div class="layer-list" id="layer-list"><p class="quiet">Material or Maya display layers will appear here.</p></div>
           <label class="export-option" title="By default, hidden layers are included in the 3DM"><input id="export-visible" type="checkbox"> Only export visible</label>
+          <label class="export-option" title="Preserve Maya transform groups as Rhino Groups, independently of Rhino layers"><input id="export-groups" type="checkbox" checked> Preserve Maya groups</label>
         </section>
         <details class="details">
           <summary><span class="details-title">Meshes</span><span class="details-count" id="geometry-count"></span></summary>

@@ -1,6 +1,6 @@
 // Write baked polygon meshes on Maya's actual display layers.
 // Use saved shader RGB as real Rhino materials and object display colours.
-import {layerCatalog,objectLayerKey} from "./layers.js";
+import {layerCatalog,objectLayerKey,groupCatalog,objectGroupPaths} from "./layers.js";
 
 const unitNames={
   mm:"Millimeters",millimeter:"Millimeters",millimeters:"Millimeters",
@@ -33,7 +33,7 @@ export function createMesh3dmSession(meta,rhino){
   const doc=new rhino.File3dm();
   doc.applicationName="Testlab Maya Mesh Converter";
   doc.settings().modelUnitSystem=rhino.UnitSystem[unitNames[meta.unit]||"Centimeters"];
-  const layers=new Map(),materials=new Map(),skipped=[];
+  const layers=new Map(),materials=new Map(),groupIndices=new Map(),skipped=[];
   let exported=0,closed=false;
   try{
     for(const item of layerCatalog(meta.objects||[],meta.displayLayers||[])){
@@ -46,6 +46,19 @@ export function createMesh3dmSession(meta,rhino){
         if(!Number.isInteger(index)||index<0)throw new Error("Cannot create Rhino layer "+item.name);
         layers.set(item.id,index);
       }finally{layer.destroy?.();}
+    }
+    if(meta.exportGroups!==false){
+      for(const item of groupCatalog(meta.objects||[])){
+        const group=new rhino.Group();
+        try{
+          group.name=item.name;
+          const index=doc.groups().count;
+          doc.groups().add(group);
+          if(doc.groups().count!==index+1)
+            throw new Error("Cannot create Rhino group "+item.name);
+          groupIndices.set(item.id,index);
+        }finally{group.destroy?.();}
+      }
     }
   }catch(error){doc.destroy();throw error;}
   function materialIndexFor(object){
@@ -81,6 +94,10 @@ export function createMesh3dmSession(meta,rhino){
           const attrs=new rhino.ObjectAttributes();
           attrs.name=object.name;
           attrs.layerIndex=layerIndex;
+          for(const groupPath of objectGroupPaths(object)){
+            const groupIndex=groupIndices.get(groupPath);
+            if(groupIndex!==undefined)attrs.addToGroup(groupIndex);
+          }
           const index=materialIndexFor(object);
           if(index!==null){
             attrs.materialIndex=index;
@@ -107,10 +124,11 @@ export function createMesh3dmSession(meta,rhino){
       const loaded=rhino.File3dm.fromByteArray(bytes);
       if(!loaded)throw new Error("3DM read-back failed");
       try{
-        if(loaded.objects().count!==exported||loaded.layers().count!==layers.size)
-          throw new Error("Incomplete geometry or layers after 3DM read-back");
+        if(loaded.objects().count!==exported||loaded.layers().count!==layers.size||
+           loaded.groups().count!==groupIndices.size)
+          throw new Error("Incomplete geometry, layers or groups after 3DM read-back");
       }finally{loaded.destroy();}
-      return {bytes,exported,skipped:[...skipped],layers:layers.size,materials:materials.size};
+      return {bytes,exported,skipped:[...skipped],layers:layers.size,materials:materials.size,groups:groupIndices.size};
     },
     dispose(){if(!closed){closed=true;doc.destroy();}}
   };

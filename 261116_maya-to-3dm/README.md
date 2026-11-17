@@ -1,7 +1,7 @@
 # Maya → Rhino · Geometry Converter
 
 Browser-only Autodesk Maya ASCII (.ma) → Rhino 3DM converter.
-Version **0.4.0-alpha.1**.
+Version **0.5.0-alpha.1**.
 
 ## Layers and colours
 
@@ -25,6 +25,19 @@ Version **0.4.0-alpha.1**.
 - Unsupported texture networks, face-level materials, procedurally computed
   colours, and external renderer features cannot be evaluated from static
   Maya ASCII alone. Shader RGB can differ from colour-managed Maya viewport output.
+
+## Layer source selector
+
+- **Materials (default)**: one Rhino layer per assigned Maya shader/material (for example Brick, Glazing, Steel). Unresolved materials share one **Unassigned** layer rather than object-by-object layers. Material RGB sets layer colour when available, otherwise the stable seeded palette is used.
+- **Maya display layers**: the earlier behaviour. Only Maya displayLayer definitions become Rhino layers, with unassigned objects on Default.
+- Switching the selector updates the preview and layer visibility panel. Export always uses the selected layer mode. Original baked geometry and Rhino object materials are unchanged.
+
+## Maya groups → Rhino groups
+
+- **Preserve Maya groups** defaults on, independently of the layer source.
+- Maya ancestor transforms above an individual mesh transform become native Rhino groups. Geometry is placed in every ancestor group, preserving practical selection relationships.
+- Rhino groups are **flat, not nested**. Full-path names such as Building::East and Building::West avoid collisions; shared memberships represent the ancestry.
+- Only groups containing exported meshes are included. Visible-only exports remove excluded meshes from group memberships too.
 
 ## Workflow
 
