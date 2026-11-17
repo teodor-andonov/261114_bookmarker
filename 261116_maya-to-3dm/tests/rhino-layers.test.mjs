@@ -43,8 +43,11 @@ test("real Rhino material is shared by objects and RGB is applied",{timeout:1200
       assert.equal(attr.materialSource,rhino.ObjectMaterialSource.MaterialFromObject);
       assert.equal(attr.materialIndex,0);
       assert.equal(attr.colorSource,rhino.ObjectColorSource.ColorFromObject);
+      assert.deepEqual(attr.objectColor,{r:220,g:55,b:11,a:255});
     }
-    assert.equal(doc.materials().get(0).name,"brick");
+    const savedMaterial=doc.materials().get(0);
+    assert.equal(savedMaterial.name,"brick");
+    assert.deepEqual(savedMaterial.diffuseColor.slice(0,3),[220,55,11]);
   }finally{doc.destroy();}
 });
 test("session still writes incrementally",{timeout:120000},async()=>{
