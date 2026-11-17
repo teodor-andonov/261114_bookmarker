@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import {OrbitControls} from "three/addons/controls/OrbitControls.js";
 import {parseMayaAscii} from "./maya-parser.js";
+import {applyMayaAppearance} from "./maya-appearance.js";
 import {prepareMeshes} from "./subdivide.js";
 import {exportMesh3dm} from "./rhino-export.js";
 import {layerCatalog,layerColor,objectLayerKey,visibleOnLayer} from "./layers.js";
@@ -78,7 +79,7 @@ function addMesh(object){
   geometry.setAttribute("position",new THREE.Float32BufferAttribute(object.vertices.flat(),3));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
-  const rgb=layerColor(key);
+  const rgb=object.materialColor||object.layerColor||layerColor(key);
   const color=new THREE.Color("rgb("+rgb.r+","+rgb.g+","+rgb.b+")");
   const material=new THREE.MeshStandardMaterial({
     color,metalness:0.0,roughness:0.82,side:THREE.DoubleSide,
@@ -190,7 +191,6 @@ function renderLayerTree(){
       }
     }
   }
-  const children=new Set(layers.filter(l=>l.parent).map(l=>l.parent));
   for(const layer of layers){
     if(filter&&!showing.has(layer.id))continue;
     if(!filter){
@@ -206,7 +206,7 @@ function renderLayerTree(){
     if(!visibleOnLayer(layer.id,visibility))row.classList.add("is-hidden");
     row.style.paddingLeft=(5+layer.depth*14)+"px";
     const expand=document.createElement("button");
-    expand.className="layer-chevron"+(children.has(layer.id)?"":" has-none");
+    expand.className="layer-chevron has-none";
     expand.type="button";
     expand.textContent=expanded.has(layer.id)?"▾":"▸";
     expand.title=expanded.has(layer.id)?"Collapse group":"Expand group";
@@ -247,7 +247,7 @@ function renderLayerTree(){
 function renderMeshDetails(){
   $("objects").replaceChildren();
   for(const object of baked.objects){
-    const key=objectLayerKey(object),rgb=layerColor(key);
+    const key=objectLayerKey(object),rgb=object.materialColor||object.layerColor||layerColor(key);
     const row=document.createElement("div");row.className="object-item";
     const dot=document.createElement("span");dot.className="mesh-dot";
     dot.style.background="rgb("+rgb.r+","+rgb.g+","+rgb.b+")";
@@ -255,7 +255,7 @@ function renderMeshDetails(){
     const name=document.createElement("div");name.className="object-name";
     name.textContent=object.name;name.title=object.path;
     const stat=document.createElement("div");stat.className="subtle";
-    stat.textContent=object.vertices.length+" vertices · "+object.faces.length+" faces";
+    stat.textContent=object.vertices.length+" vertices · "+object.faces.length+" faces"+(object.materialName?" · "+object.materialName:"");
     details.append(name,stat);
     const chip=document.createElement("span");chip.className="chip";
     chip.textContent=object.appliedLevels+"× smooth";
@@ -291,9 +291,9 @@ function showResults(){
 function rebuild(){
   if(!parsed)return;
   baked=prepareMeshes(parsed,$("detail").value);
-  layers=layerCatalog(baked.objects);
+  layers=layerCatalog(baked.objects,baked.displayLayers||[]);
   const saved=new Map(visibility);
-  visibility=new Map(layers.map(l=>[l.id,saved.has(l.id)?saved.get(l.id):true]));
+  visibility=new Map(layers.map(l=>[l.id,saved.has(l.id)?saved.get(l.id):l.visible]));
   // Opening a file shows one level of hierarchy without flooding the sidebar.
   if(!expanded.size)expanded=new Set(layers.filter(l=>l.depth===0).map(l=>l.id));
   renderObjects();
@@ -301,7 +301,7 @@ function rebuild(){
 }
 function refreshAxis(){
   if(!sourceText)return;
-  parsed=parseMayaAscii(sourceText,{upAxis:$("axis").value});
+  parsed=applyMayaAppearance(parseMayaAscii(sourceText,{upAxis:$("axis").value}),sourceText);
   rebuild();
 }
 async function openFile(file){
