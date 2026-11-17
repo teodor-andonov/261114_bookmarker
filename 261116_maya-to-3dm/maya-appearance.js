@@ -1,0 +1,171 @@
+// Read Maya display-layer and simple shader networks from the same .ma text.
+// Display layers are NOT Maya DAG transform groups: each named displayLayer
+// creates one flat Rhino layer. Only static RGB properties are evaluated.
+import {scanMayaCommands,tokenizeMayaCommand} from "./maya-parser.js";
+
+const clamp=x=>Math.min(255,Math.max(0,Math.round(Number(x)*255)));
+const rgb=v=>v&&v.length>=3&&v.slice(0,3).every(x=>Number.isFinite(Number(x)))
+  ? {r:clamp(v[0]),g:clamp(v[1]),b:clamp(v[2])}:null;
+const shaderTypes=new Set([
+  "lambert","phong","phongE","blinn","anisotropic",
+  "surfaceShader","standardSurface","aiStandardSurface"
+]);
+function attrRef(ref){
+  const point=ref.lastIndexOf(".");
+  return {node:point<0?ref:ref.slice(0,point),attr:point<0?"":ref.slice(point+1)};
+}
+function baseAttr(attr){return attr.replace(/\[.*$/,"");}
+function graph(source){
+  const nodes=new Map(),aliases=new Map(),connections=[];
+  let current=null;
+  function resolve(ref){
+    if(!ref)return null;
+    if(nodes.has(ref))return ref;
+    const path=ref.startsWith("|")?ref:ref.includes("|")?"|"+ref:null;
+    if(path&&nodes.has(path))return path;
+    const short=ref.split("|").at(-1);
+    const candidates=aliases.get(short);
+    return candidates?.at(-1)||null;
+  }
+  for(const command of scanMayaCommands(source)){
+    const t=tokenizeMayaCommand(command),op=t[0];
+    if(op==="createNode"){
+      const nameFlag=t.indexOf("-n"),parentFlag=t.indexOf("-p");
+      const given=nameFlag>=0?t[nameFlag+1]:null;
+      if(!given){current=null;continue;}
+      const short=given.split("|").at(-1);
+      const parent=parentFlag>=0?resolve(t[parentFlag+1]):null;
+      const type=t[1];
+      const dag=type==="transform"||type==="mesh";
+      const id=dag?(parent||"")+"|"+short:short;
+      current=id;
+      nodes.set(id,{id,name:short,parent,type,attrs:new Map()});
+      if(!aliases.has(short))aliases.set(short,[]);
+      aliases.get(short).push(id);
+      continue;
+    }
+    if(op==="select"){
+      current=resolve(t.slice(1).filter(x=>!x.startsWith("-")).at(-1));
+      continue;
+    }
+    if(op==="connectAttr"){
+      const vals=t.slice(1).filter(x=>!x.startsWith("-"));
+      if(vals.length>=2)connections.push([vals[0],vals[1]]);
+      continue;
+    }
+    if(op!=="setAttr"||!current)continue;
+    const at=t.findIndex((x,i)=>i>0&&(x.startsWith(".")||(!x.startsWith("-")&&x.includes("."))));
+    if(at<0)continue;
+    const ref=attrRef(t[at]);
+    const node=nodes.get(ref.node?resolve(ref.node):current);
+    if(!node)continue;
+    const key=baseAttr(ref.attr);
+    const values=t.slice(at+1);
+    if(values[0]==="-type")values.splice(0,2);
+    if(values.length)node.attrs.set(key,values);
+  }
+  return {nodes,connections,resolve};
+}
+const number=(value,fallback=0)=>Number.isFinite(Number(value))?Number(value):fallback;
+function readNodeColor(node){
+  if(!node)return null;
+  const attrs=node.attrs;
+  const isSurface=node.type==="standardSurface"||node.type==="aiStandardSurface";
+  const key=isSurface?["bc","baseColor","base_color"]:node.type==="surfaceShader"
+    ? ["oc","outColor"]:["c","color"];
+  let values=null;
+  for(const attr of key)if(attrs.has(attr)){values=attrs.get(attr);break;}
+  if(!values){
+    const components=isSurface?[["bcr","bcg","bcb"],["baseColorR","baseColorG","baseColorB"]]:
+      [["cr","cg","cb"],["colorR","colorG","colorB"]];
+    for(const names of components){
+      if(!names.some(x=>attrs.has(x)))continue;
+      values=names.map(x=>attrs.get(x)?.[0]??(isSurface?0.8:0.5));
+      break;
+    }
+  }
+  // No source RGB saved => no fabricated Maya material color.
+  if(!values)return null;
+  const result=rgb(values);
+  if(result&&isSurface){
+    const scalar=number(attrs.get("base")?.[0]??attrs.get("b")?.[0],1);
+    result.r=Math.round(result.r*Math.max(0,Math.min(1,scalar)));
+    result.g=Math.round(result.g*Math.max(0,Math.min(1,scalar)));
+    result.b=Math.round(result.b*Math.max(0,Math.min(1,scalar)));
+  }
+  return result;
+}
+function readDisplayColor(node){
+  if(!node)return null;
+  const attrs=node.attrs;
+  const array=attrs.get("ovrgb")||attrs.get("overrideColorRGB");
+  if(array)return rgb(array);
+  const keys=[["ovcr","ovcg","ovcb"],["overrideColorR","overrideColorG","overrideColorB"]];
+  for(const names of keys){
+    if(names.some(x=>attrs.has(x)))
+      return rgb(names.map(x=>attrs.get(x)?.[0]??"0"));
+  }
+  return null; // Maya index colours are not RGB: use stable fallback.
+}
+function isObjectMember(sourceAttr,destAttr){
+  const a=baseAttr(sourceAttr),b=baseAttr(destAttr);
+  return /^(iog|instObjGroups|og|objectGroups)$/.test(a) &&
+    /^(dsm|dagSetMembers)$/.test(b);
+}
+export function applyMayaAppearance(parsed,source){
+  const {nodes,connections,resolve}=graph(source);
+  const namedLayers=[...nodes.values()].filter(n=>n.type==="displayLayer"&&n.name!=="defaultLayer");
+  const layerNameById=new Map(namedLayers.map(n=>[n.id,n.name]));
+  const membership=new Map(),shaderByGroup=new Map(),groupByShape=new Map();
+  const textureTargets=new Set();
+  for(const [src,dst] of connections){
+    const a=attrRef(src),b=attrRef(dst);
+    const from=nodes.get(resolve(a.node)),to=nodes.get(resolve(b.node));
+    if(!from||!to)continue;
+    const aAttr=baseAttr(a.attr),bAttr=baseAttr(b.attr);
+    // Typical display-layer wiring is layer.drawInfo -> shape/transform.drawOverride.
+    if(from.type==="displayLayer"&&
+       (aAttr==="di"||aAttr==="drawInfo")&&
+       (bAttr==="do"||bAttr==="drawOverride")){
+      membership.set(to.id,from.id);
+    }
+    // Also handle object-set style displayLayer.dagSetMembers connections.
+    if(to.type==="displayLayer"&&isObjectMember(a.attr,b.attr))
+      membership.set(from.id,to.id);
+    if(to.type==="shadingEngine"&&
+       (bAttr==="ss"||bAttr==="surfaceShader")&&shaderTypes.has(from.type))
+      shaderByGroup.set(to.id,from.id);
+    if(to.type==="shadingEngine"&&isObjectMember(a.attr,b.attr)&&from.type==="mesh"){
+      // Component-level assignments cannot be represented as one material/object.
+      if(aAttr==="iog"||aAttr==="instObjGroups")groupByShape.set(from.id,to.id);
+    }
+    if(shaderTypes.has(to.type)&&["c","color","bc","baseColor","base_color"].includes(bAttr)
+       &&from.type==="file")textureTargets.add(to.id);
+  }
+  const displayLayers=namedLayers.map(n=>({
+    name:n.name,color:readDisplayColor(n),sourceId:n.id,
+    visible:n.attrs.get("v")?.[0]!=="no"&&n.attrs.get("v")?.[0]!=="0"
+  }));
+  let textured=0;
+  const objects=parsed.objects.map(object=>{
+    let node=nodes.get(object.path);
+    let foundLayer=null;
+    // A transform assigned to a display layer includes its mesh descendants.
+    while(node){
+      if(membership.has(node.id)){foundLayer=membership.get(node.id);break;}
+      node=nodes.get(node.parent);
+    }
+    const layerName=layerNameById.get(foundLayer)||"Default";
+    const group=nodes.get(groupByShape.get(object.path));
+    const shader=nodes.get(shaderByGroup.get(group?.id));
+    if(shader&&textureTargets.has(shader.id))textured++;
+    return {...object,
+      layerName,layerColor:displayLayers.find(l=>l.name===layerName)?.color||null,
+      materialName:shader?.name||null,
+      materialColor:shader?readNodeColor(shader):null
+    };
+  });
+  const warnings=[...parsed.warnings];
+  if(textured)warnings.push(textured+" objects use texture-driven colours; only saved shader RGB values are imported.");
+  return {...parsed,objects,displayLayers,warnings};
+}
