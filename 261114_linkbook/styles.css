@@ -117,3 +117,40 @@
 .command-option small{color:#89968c;font-size:10px;white-space:nowrap;max-width:100%;text-overflow:ellipsis;overflow:hidden}
 .command-option:hover,.command-option.active{background:#edf2ee}
 .command-help{padding:11px 18px 15px;margin:0;border-top:1px solid #e5eae6;color:#929d95;font-size:10px}
+
+
+/* Optional screenshot experiment: two equal first-viewport previews, no extra toolbar buttons. */
+.screenshots-dialog {
+  box-sizing:border-box; position:fixed; margin:auto;
+  width:min(1080px,calc(100vw - 28px)); max-width:none;
+  max-height:calc(100dvh - 28px); padding:0; overflow-y:auto;
+  border:1px solid #d9dfd9; border-radius:13px;
+  background:#fff; color:#27312b; box-shadow:0 32px 96px #071a1455;
+}
+.screenshots-dialog::backdrop {background:#0b17128a;backdrop-filter:blur(3px)}
+.screenshots-shell {padding:22px}
+.screenshots-heading {display:flex;align-items:start;justify-content:space-between;gap:16px;margin-bottom:16px}
+.screenshots-heading h2 {font-size:21px;letter-spacing:-.04em;line-height:1.2;margin:5px 0 0}
+.screenshots-hint,.screenshots-enter-hint {font-size:11px;color:#88958c;white-space:nowrap}
+.screenshots-url-form {display:flex;align-items:center;padding:0 12px;border:1px solid #dce4de;background:#f9fbf9;border-radius:8px}
+.screenshots-url-form input {height:44px;min-width:0;flex:1;background:transparent;border:0;outline:0;color:#27312b;font:12px/1.4 ui-monospace,Consolas,monospace}
+.screenshots-url-form:focus-within {outline:2px solid #92aba1;outline-offset:1px}
+.screenshots-note,.screenshots-footnote {font-size:11px;line-height:1.55;color:#829086;margin:10px 0 16px}
+.screenshots-footnote {margin:12px 0 0}
+.screenshots-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.screenshots-provider {min-width:0}
+.screenshots-provider-heading {display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:9px}
+.screenshots-provider-heading h3 {margin:0;font-size:14px;letter-spacing:-.02em}
+.screenshots-status {font-size:10px;color:#89968c;text-align:right}
+.screenshots-image-frame {aspect-ratio:8 / 5;overflow:hidden;border:1px solid #e3e7e3;border-radius:8px;background:#f5f7f5;position:relative;display:grid;place-items:center}
+.screenshots-image-frame img {width:100%;height:100%;object-fit:contain;display:block;grid-area:1 / 1}
+.screenshots-image-frame img[hidden] {display:none}
+.screenshots-image-frame p {grid-area:1 / 1;text-align:center;max-width:75%;font-size:12px;line-height:1.6;color:#97a39a;padding:10px;overflow-wrap:anywhere}
+.screenshots-image-frame p[hidden] {display:none}
+.screenshots-provider-note {font-size:10px;line-height:1.5;color:#849087;margin:9px 0 0}
+@media(max-width:660px) {
+  .screenshots-shell {padding:15px}
+  .screenshots-grid {grid-template-columns:1fr;gap:18px}
+  .screenshots-heading h2 {font-size:17px}
+  .screenshots-note,.screenshots-footnote {font-size:10px}
+}
