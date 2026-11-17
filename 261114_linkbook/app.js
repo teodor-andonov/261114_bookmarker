@@ -405,6 +405,11 @@ function assignScreenshotImage(provider, src, generation) {
 }
 
 async function compareScreenshots() {
+  const generation = ++screenshotCompare.generation;
+  screenshotCompare.controller?.abort();
+  screenshotCompare.controller = null;
+  clearScreenshotImage('microlink', 'Preparing capture…');
+  clearScreenshotImage('thum', 'Preparing capture…');
   const raw = els.screenshotUrl.value.trim();
   let target;
   try {
@@ -416,8 +421,6 @@ async function compareScreenshots() {
     els.thumPlaceholder.textContent = error.message;
     return;
   }
-  const generation = ++screenshotCompare.generation;
-  screenshotCompare.controller?.abort();
   const controller = new AbortController();
   screenshotCompare.controller = controller;
   clearScreenshotImage('microlink', 'Requesting capture…');
@@ -428,7 +431,7 @@ async function compareScreenshots() {
   // Microlink returns JSON (including a CDN screenshot URL) and actionable errors.
   try {
     const response = await fetch(microlinkRequestUrl(target), {
-      signal: controller.signal, mode: 'cors', credentials: 'omit'
+      signal: controller.signal, mode: 'cors', credentials: 'omit', referrerPolicy: 'no-referrer'
     });
     if (generation !== screenshotCompare.generation) return;
     if (!response.ok) throw new Error('HTTP ' + response.status +
