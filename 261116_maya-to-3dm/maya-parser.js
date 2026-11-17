@@ -255,3 +255,6 @@ export function parseMayaAscii(source,options={}){
   if(history)warnings.push(history+" unsupported history/deformer nodes (cached geometry only).");
   return {objects,warnings,unit,upAxis:outputAxis,sourceUpAxis:axis,parsedNodes:nodes.size,historyNodes:history};
 }
+
+// Reuse the same Maya ASCII command scanner for display layers and shader links.
+export {commands as scanMayaCommands, tokenize as tokenizeMayaCommand};
