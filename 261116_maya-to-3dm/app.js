@@ -4,7 +4,7 @@ import {parseMayaAscii} from "./maya-parser.js";
 import {applyMayaAppearance} from "./maya-appearance.js";
 import {prepareMeshes} from "./subdivide.js";
 import {exportMesh3dm} from "./rhino-export.js";
-import {layerCatalog,layerColor,objectLayerKey,visibleOnLayer} from "./layers.js";
+import {layerCatalog,layerColor,objectLayerKey,visibleOnLayer,applyLayerMode} from "./layers.js";
 
 const $=id=>document.getElementById(id);
 const canvas=$("viewport");
@@ -290,7 +290,7 @@ function showResults(){
 }
 function rebuild(){
   if(!parsed)return;
-  baked=prepareMeshes(parsed,$("detail").value);
+  baked=applyLayerMode(prepareMeshes(parsed,$("detail").value),$("layer-source").value);
   layers=layerCatalog(baked.objects,baked.displayLayers||[]);
   const saved=new Map(visibility);
   visibility=new Map(layers.map(l=>[l.id,saved.has(l.id)?saved.get(l.id):l.visible]));
@@ -344,12 +344,12 @@ async function exportCurrent(){
   button.disabled=false;button.textContent="Cancel export";
   status("Starting Rhino export…","pending");
   try{
-    const result=await exportMesh3dm({...baked,objects},{
+    const result=await exportMesh3dm({...baked,objects,exportGroups:$("export-groups").checked},{
       signal:controller.signal,
       onProgress:(done,total)=>status("Writing mesh "+done+" / "+total+"…","pending")
     });
     download(result.bytes,currentName.replace(/\.ma$/i,"")+".3dm");
-    status("Exported "+result.exported+" meshes · "+result.layers+" Rhino layers"+
+    status("Exported "+result.exported+" meshes · "+result.layers+" Rhino layers · "+result.groups+" groups"+
       (result.skipped.length?" · "+result.skipped.length+" skipped":""),result.skipped.length?"warning":"ok");
     if(result.skipped.length){baked.warnings.push(...result.skipped);renderNotices();}
   }catch(error){
@@ -375,6 +375,7 @@ drop.addEventListener("drop",e=>openFile(e.dataTransfer.files?.[0]));
 $("wireframe").addEventListener("change",()=>renderObjects({fit:false}));
 $("grid-toggle").addEventListener("change",resetGrid);
 $("detail").addEventListener("change",rebuild);
+$("layer-source").addEventListener("change",()=>{visibility=new Map();expanded=new Set();rebuild();});
 $("axis").addEventListener("change",refreshAxis);
 $("layer-filter").addEventListener("input",renderLayerTree);
 $("export-visible").addEventListener("change",applyVisibility);
