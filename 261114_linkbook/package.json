@@ -1,6 +1,6 @@
 {
   "name": "linkbook-pwa",
-  "version": "0.3.0-alpha.2",
+  "version": "0.3.0-alpha.3",
   "private": true,
   "type": "module",
   "description": "A dependency-free, browser-only bookmark app with optional Defuddle metadata",
