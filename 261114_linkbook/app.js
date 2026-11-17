@@ -2,7 +2,7 @@ import { listBookmarks, getBookmark, getByUrl, saveBookmark, deleteBookmark } fr
 import { normalizeUrl, safeImageUrl, fallbackMetadata, getMetadata, urlFromShare, parsePublicationDate } from './metadata.js';
 import { coverImage, isLocalCover } from './cover.js';
 import { mergeEnrichment } from './refresh.js';
-import { microlinkRequestUrl, thumImageUrl, parseMicrolinkResult, validateScreenshotTarget } from './screenshot-compare.js';
+import { thumImageUrl, validateScreenshotTarget } from './screenshot-compare.js';
 
 const $ = id => document.getElementById(id);
 const els = {
@@ -15,8 +15,8 @@ const els = {
   dialog: $('detailDialog'), detailForm: $('detailForm'), metadataStatus: $('detailMetadataStatus'),
   screenshotDialog: $('screenshotCompareDialog'), screenshotForm: $('screenshotCompareForm'),
   screenshotUrl: $('screenshotCompareUrl'),
-  microlinkImage: $('microlinkImage'), microlinkStatus: $('microlinkStatus'), microlinkPlaceholder: $('microlinkPlaceholder'),
-  thumImage: $('thumImage'), thumStatus: $('thumStatus'), thumPlaceholder: $('thumPlaceholder')
+  thumImage: $('thumImage'), thumStatus: $('thumStatus'), thumPlaceholder: $('thumPlaceholder'),
+  thumWidth: $('thumWidth'), thumCrop: $('thumCrop'), thumFormat: $('thumFormat'), thumMaxAge: $('thumMaxAge')
 };
 const state = {
   bookmarks: [], view: getSavedView(), selectedTag: '', selectedId: null,
@@ -357,110 +357,76 @@ els.importFile.addEventListener('change', async () => {
 
 
 
-// Screenshot services run only on explicit compare requests. No stored screenshots,
-// no automatic calls while browsing, and no changes to existing bookmark covers.
-const screenshotCompare = { generation: 0, controller: null };
+// Thum.io screenshot previews are opt-in, ephemeral, and never stored in IndexedDB.
+// Defuddle remains the only article metadata/text extractor.
+const screenshotPreview = { generation: 0 };
 
-function clearScreenshotImage(provider, message) {
-  const image = provider === 'microlink' ? els.microlinkImage : els.thumImage;
-  const placeholder = provider === 'microlink' ? els.microlinkPlaceholder : els.thumPlaceholder;
-  const status = provider === 'microlink' ? els.microlinkStatus : els.thumStatus;
+function clearScreenshotPreview(message) {
+  const image = els.thumImage;
   image.hidden = true;
   image.removeAttribute('src');
   image.onload = null;
   image.onerror = null;
-  status.textContent = message;
-  placeholder.textContent = message;
-  placeholder.hidden = false;
+  els.thumStatus.textContent = message;
+  els.thumPlaceholder.textContent = message;
+  els.thumPlaceholder.hidden = false;
 }
 
-function resetScreenshotComparison() {
-  screenshotCompare.generation++;
-  screenshotCompare.controller?.abort();
-  screenshotCompare.controller = null;
-  clearScreenshotImage('microlink', 'Not requested');
-  clearScreenshotImage('thum', 'Not requested');
+function resetScreenshotPreview() {
+  screenshotPreview.generation++;
+  clearScreenshotPreview('Not requested');
 }
 
-function assignScreenshotImage(provider, src, generation) {
-  if (generation !== screenshotCompare.generation || !els.screenshotDialog.open) return;
-  const image = provider === 'microlink' ? els.microlinkImage : els.thumImage;
-  const placeholder = provider === 'microlink' ? els.microlinkPlaceholder : els.thumPlaceholder;
-  const status = provider === 'microlink' ? els.microlinkStatus : els.thumStatus;
-  image.onload = () => {
-    if (generation !== screenshotCompare.generation) return;
-    image.hidden = false;
-    placeholder.hidden = true;
-    status.textContent = 'Loaded';
-  };
-  image.onerror = () => {
-    if (generation !== screenshotCompare.generation) return;
-    image.hidden = true;
-    placeholder.textContent = 'Preview image could not be loaded.';
-    placeholder.hidden = false;
-    status.textContent = 'Unavailable';
-  };
-  status.textContent = 'Loading screenshot…';
-  image.src = src;
-}
-
-async function compareScreenshots() {
-  const generation = ++screenshotCompare.generation;
-  screenshotCompare.controller?.abort();
-  screenshotCompare.controller = null;
-  clearScreenshotImage('microlink', 'Preparing capture…');
-  clearScreenshotImage('thum', 'Preparing capture…');
-  const raw = els.screenshotUrl.value.trim();
-  let target;
+function previewScreenshot() {
+  const generation = ++screenshotPreview.generation;
+  clearScreenshotPreview('Preparing screenshot…');
+  let imageUrl;
   try {
-    target = validateScreenshotTarget(raw);
+    const target = validateScreenshotTarget(els.screenshotUrl.value.trim());
+    imageUrl = thumImageUrl(target, {
+      width: Number(els.thumWidth.value),
+      crop: Number(els.thumCrop.value),
+      format: els.thumFormat.value,
+      maxAge: Number(els.thumMaxAge.value)
+    });
   } catch (error) {
-    clearScreenshotImage('microlink', 'Invalid URL');
-    clearScreenshotImage('thum', 'Invalid URL');
-    els.microlinkPlaceholder.textContent = error.message;
-    els.thumPlaceholder.textContent = error.message;
+    clearScreenshotPreview(error.message || 'Invalid screenshot settings');
+    els.thumStatus.textContent = 'Unavailable';
     return;
   }
-  const controller = new AbortController();
-  screenshotCompare.controller = controller;
-  clearScreenshotImage('microlink', 'Requesting capture…');
-  clearScreenshotImage('thum', 'Requesting capture…');
-  // Thum.io returns an image directly: it cannot provide reliable JSON error details.
-  assignScreenshotImage('thum', thumImageUrl(target), generation);
-
-  // Microlink returns JSON (including a CDN screenshot URL) and actionable errors.
-  try {
-    const response = await fetch(microlinkRequestUrl(target), {
-      signal: controller.signal, mode: 'cors', credentials: 'omit', referrerPolicy: 'no-referrer'
-    });
-    if (generation !== screenshotCompare.generation) return;
-    if (!response.ok) throw new Error('HTTP ' + response.status +
-      (response.status === 429 ? ' — daily request limit reached' : ''));
-    const screenshot = parseMicrolinkResult(await response.json());
-    if (generation !== screenshotCompare.generation) return;
-    assignScreenshotImage('microlink', screenshot.url, generation);
-  } catch (error) {
-    if (controller.signal.aborted || generation !== screenshotCompare.generation) return;
-    els.microlinkStatus.textContent = 'Unavailable';
-    els.microlinkPlaceholder.textContent = error.message || 'Screenshot request failed';
-  }
+  const image = els.thumImage;
+  image.onload = () => {
+    if (generation !== screenshotPreview.generation || !els.screenshotDialog.open) return;
+    image.hidden = false;
+    els.thumPlaceholder.hidden = true;
+    els.thumStatus.textContent = 'Loaded';
+  };
+  image.onerror = () => {
+    if (generation !== screenshotPreview.generation || !els.screenshotDialog.open) return;
+    image.hidden = true;
+    els.thumPlaceholder.textContent = 'Thum.io could not load a screenshot of this website.';
+    els.thumPlaceholder.hidden = false;
+    els.thumStatus.textContent = 'Unavailable';
+  };
+  els.thumStatus.textContent = 'Loading screenshot…';
+  image.src = imageUrl;
 }
 
-function openScreenshotComparison() {
+function openScreenshotPreview() {
   const selected = state.selectedId && state.bookmarks.find(b => b.id === state.selectedId);
   const target = els.url.value.trim() || selected?.url || '';
-  resetScreenshotComparison();
+  resetScreenshotPreview();
   els.screenshotUrl.value = target;
   if (!els.screenshotDialog.open) els.screenshotDialog.showModal();
-  if (target) void compareScreenshots();
+  if (target) previewScreenshot();
   else els.screenshotUrl.focus();
 }
 
 els.screenshotForm.addEventListener('submit', event => {
   event.preventDefault();
-  void compareScreenshots();
+  previewScreenshot();
 });
-els.screenshotDialog.addEventListener('close', resetScreenshotComparison);
+els.screenshotDialog.addEventListener('close', resetScreenshotPreview);
 els.screenshotDialog.addEventListener('click', event => {
   if (event.target === els.screenshotDialog) els.screenshotDialog.close();
 });
@@ -470,7 +436,7 @@ function availableCommands() {
   const commands = [
     {label:'Show all tags', detail:'Clear tag filter', run:()=>{state.selectedTag='';render();}},
     ...availableTags().map(tag=>({label:'Filter tag: '+tag, detail:'Only show links tagged '+tag, run:()=>{state.selectedTag=tag;render();}})),
-    {label:'Compare screenshots: Microlink vs Thum.io', detail:'Preview both services side by side for a saved or pasted URL', run:openScreenshotComparison},
+    {label:'Preview screenshot with Thum.io', detail:'First-screen screenshot with configurable output width, crop and cache', run:openScreenshotPreview},
     {label:'Refresh all links with Defuddle', detail:'Update metadata, article text and automatic images', run:refreshAllBookmarks},
     ...(state.refreshing ? [{label:'Stop refreshing links', detail:'Finish the current request, then stop', run:()=>{state.stopRefresh=true;}}] : []),
     {label:'Switch to grid view', detail:'Show bookmarks as cards', run:()=>{state.view='grid';saveView('grid');render();}},
