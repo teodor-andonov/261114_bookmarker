@@ -40,7 +40,7 @@ export function createMesh3dmSession(meta,rhino){
       const layer=new rhino.Layer();
       try{
         layer.name=item.name;
-        layer.color=item.color;
+        layer.color={...item.color,a:255};
         layer.visible=item.visible!==false;
         const index=doc.layers().add(layer);
         if(!Number.isInteger(index)||index<0)throw new Error("Cannot create Rhino layer "+item.name);
@@ -85,7 +85,7 @@ export function createMesh3dmSession(meta,rhino){
           if(index!==null){
             attrs.materialIndex=index;
             attrs.materialSource=rhino.ObjectMaterialSource.MaterialFromObject;
-            attrs.objectColor=object.materialColor;
+            attrs.objectColor={...object.materialColor,a:255};
             attrs.colorSource=rhino.ObjectColorSource.ColorFromObject;
           }else{
             attrs.colorSource=rhino.ObjectColorSource.ColorFromLayer;
