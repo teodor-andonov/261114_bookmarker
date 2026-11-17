@@ -42,6 +42,7 @@ export function exportMesh3dm(model,{onProgress=()=>{},signal}={}){
     };
     worker.postMessage({type:"start",meta:{
       unit:model.unit,
+      exportGroups:model.exportGroups!==false,
       displayLayers:model.displayLayers||[],
       objects:model.objects.map(o=>({
         path:o.path,name:o.name,layerName:o.layerName,layerColor:o.layerColor
