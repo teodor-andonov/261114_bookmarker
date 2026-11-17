@@ -79,6 +79,49 @@
     <div id="commandResults" class="command-results" role="group" aria-label="Available commands"></div>
     <p class="command-help">Ctrl/⌘ + K to open · Enter to run · ↑↓ to navigate</p>
   </dialog>
+  <dialog id="screenshotCompareDialog" class="screenshots-dialog" aria-labelledby="screenshotCompareTitle">
+    <div class="screenshots-shell">
+      <div class="screenshots-heading">
+        <div>
+          <div class="eyebrow">SCREENSHOT EXPERIMENT</div>
+          <h2 id="screenshotCompareTitle">Compare first-screen captures</h2>
+        </div>
+        <span class="screenshots-hint">Esc to close</span>
+      </div>
+      <form id="screenshotCompareForm" class="screenshots-url-form">
+        <label class="sr-only" for="screenshotCompareUrl">Website URL</label>
+        <input id="screenshotCompareUrl" type="url" inputmode="url" required
+          placeholder="https://example.com" autocomplete="url" />
+        <span class="screenshots-enter-hint">Enter ↵</span>
+      </form>
+      <p class="screenshots-note">Only the website URL is sent to Microlink and Thum.io when you request a comparison. No notes or tags are shared. Previews are temporary and do not replace your saved covers.</p>
+      <div class="screenshots-grid">
+        <section class="screenshots-provider" aria-label="Microlink screenshot">
+          <div class="screenshots-provider-heading">
+            <h3>Microlink</h3>
+            <span class="screenshots-status" id="microlinkStatus" aria-live="polite">Not requested</span>
+          </div>
+          <div class="screenshots-image-frame" id="microlinkFrame">
+            <img id="microlinkImage" referrerpolicy="no-referrer" alt="Microlink first-viewport screenshot" hidden />
+            <p id="microlinkPlaceholder">Run a comparison to preview this website.</p>
+          </div>
+          <p class="screenshots-provider-note">1200 × 750 viewport · JPEG · Free tier: limited daily requests</p>
+        </section>
+        <section class="screenshots-provider" aria-label="Thum.io screenshot">
+          <div class="screenshots-provider-heading">
+            <h3>Thum.io</h3>
+            <span class="screenshots-status" id="thumStatus" aria-live="polite">Not requested</span>
+          </div>
+          <div class="screenshots-image-frame" id="thumFrame">
+            <img id="thumImage" referrerpolicy="no-referrer" alt="Thum.io first-viewport screenshot" hidden />
+            <p id="thumPlaceholder">Run a comparison to preview this website.</p>
+          </div>
+          <p class="screenshots-provider-note">1200px viewport · First 750px · Free tier may show branded loading</p>
+        </section>
+      </div>
+      <p class="screenshots-footnote">If a provider fails, the other preview remains available. Screenshots can differ because of cookies, location, rendering and site restrictions.</p>
+    </div>
+  </dialog>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
