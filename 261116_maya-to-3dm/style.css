@@ -31,15 +31,10 @@ body{margin:0;min-height:100vh}button,select,input,label{font:inherit}button{cur
 .empty h2{font-size:20px;margin:0;letter-spacing:-.02em}
 .empty p{font-size:12px;color:#b4c6ce;line-height:1.65;margin:0}
 .viewer-tools{position:absolute;top:15px;left:15px;display:flex;align-items:center;gap:12px;padding:8px 10px;color:#d7e4ea;background:rgba(12,23,32,.79);border:1px solid #41535e;border-radius:8px;font-size:11px;backdrop-filter:blur(10px)}
-.view-mode{font-size:9px;font-weight:790;letter-spacing:.08em;color:#a7c7d1}
 .toggle{display:flex;gap:5px;align-items:center;cursor:pointer}
 .toggle input,.export-option input{accent-color:var(--accent);cursor:pointer}
 .viewer-tools button{color:#dce8ed;background:#2c404d;border:0;border-radius:5px;font-size:11px;padding:5px 8px}
 .viewer-tools button:hover{background:#425c69}
-.view-footer,.scene-info{position:absolute;bottom:15px;font-size:10px;letter-spacing:.015em;color:#a9bac5;pointer-events:none}
-.view-footer{left:16px}.scene-info{right:18px}
-.axis-note{position:absolute;right:16px;top:15px;display:flex;gap:6px;flex-direction:column;align-items:flex-end;color:#c0d3db;font-size:10px;font-weight:700;opacity:.8;pointer-events:none}
-.axis-note span:last-child{font-size:9px;opacity:.7;font-weight:400}
 .sidebar{display:block;background:var(--surface);border-left:1px solid var(--line);min-width:0;min-height:0;height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin}
 .file-section{padding:20px 18px 13px}
 .eyebrow{font-size:10px;color:var(--quiet);font-weight:750;letter-spacing:.1em}
@@ -47,15 +42,9 @@ body{margin:0;min-height:100vh}button,select,input,label{font:inherit}button{cur
 .subtle{font-size:11px;color:var(--muted);line-height:1.5}
 .status{margin-top:12px;background:var(--surface-high);padding:10px;border-radius:6px;border:1px solid var(--line);font-size:11px;line-height:1.45;color:var(--muted)}
 .status[data-kind="ok"]{color:#91c9b0}.status[data-kind="error"]{color:#ff9894}.status[data-kind="pending"]{color:#a9cddd}.status[data-kind="warning"]{color:#efc48c}
-.summary{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.metric{padding:13px 18px;display:flex;gap:4px;flex-direction:column;border-bottom:1px solid var(--line)}
-.metric:nth-child(odd){border-right:1px solid var(--line)}.metric:nth-last-child(-n+2){border-bottom:0}
-.metric strong{font-size:18px;font-weight:650;line-height:1.1;font-variant-numeric:tabular-nums}
-.metric span{font-size:10px;color:var(--muted)}
 .layer-section{display:block;min-width:0;padding-top:14px;border-bottom:1px solid var(--line)}
 .section-heading{display:flex;align-items:flex-end;justify-content:space-between;padding:0 16px 11px}
 .section-heading h3{font-size:14px;margin:6px 0 0;font-weight:630}
-.section-heading h3 span{color:var(--muted);font-size:11px;font-weight:450;margin-left:4px}
 .inline-actions{display:flex;gap:5px}
 .inline-actions button{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:5px;font-size:10px;padding:4px 7px}
 .inline-actions button:hover{color:var(--fg);background:var(--surface-high)}
@@ -85,8 +74,6 @@ body{margin:0;min-height:100vh}button,select,input,label{font:inherit}button{cur
 .quiet{padding:10px;color:var(--quiet);font-size:11px;margin:0}
 .warnings{font-size:11px;color:var(--muted);padding:3px 6px 8px;line-height:1.5;max-height:min(34vh,260px);overflow-y:auto;overflow-wrap:anywhere}
 .warnings p{margin:4px 0 8px}
-.workflow{margin-top:auto;padding:16px 18px 60px}
-.workflow p{font-size:11px;line-height:1.6;color:var(--muted);margin:8px 0 0}
 @media(max-width:850px){
  .app{height:auto;min-height:100dvh;overflow:visible}
  .workspace{grid-template-columns:1fr;grid-template-rows:minmax(360px,52vh) auto}
@@ -116,3 +103,10 @@ body{margin:0;min-height:100vh}button,select,input,label{font:inherit}button{cur
 .stats-strip span{white-space:nowrap}
 .stats-strip strong{font-size:11px;font-weight:700;color:var(--fg);font-variant-numeric:tabular-nums}
 .stats-strip .units{margin-left:auto;color:var(--quiet)}
+
+/* Reduced sidebar header and scoped disclosure labels. */
+.section-heading{align-items:center}
+.section-heading h3{margin:0;font-size:12px}
+.details .details-title{font-weight:600;color:var(--muted)}
+.details[open] .details-title{color:var(--fg)}
+.scene-info{position:absolute;right:16px;bottom:14px;font-size:10px;color:#a9bac5;pointer-events:none}

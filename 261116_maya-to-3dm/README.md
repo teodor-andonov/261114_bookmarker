@@ -1,7 +1,7 @@
 # Maya → Rhino · Geometry Converter
 
 Browser-only Maya ASCII (.ma) → Rhino 3DM **baked polygon meshes**, with native Rhino layers.
-Version **0.3.0-alpha.1**.
+Version **0.3.1-alpha.1**.
 
 ## Workflow
 
@@ -40,3 +40,10 @@ to omit currently hidden mesh objects from the 3DM. Hiding a group hides its des
 
 Run npm install, npm test, npm run dev, or npm run build.
 The Testlab repository builds this prototype through GitHub Actions.
+
+## UI refinements (0.3.1)
+
+- Replaced the radial viewport gradient with a solid background.
+- Compact scene statistics and simplified sidebar labels; removed redundant explanatory footer.
+- Mesh and Notices panels expand in normal document flow with their own bounded scroll areas.
+- Sidebar height follows available workspace height instead of assuming a fixed 66px header.

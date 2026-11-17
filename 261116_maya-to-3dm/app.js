@@ -37,7 +37,6 @@ let groundGrid=null;
 let sourceText="",currentName="maya-geometry.ma",parsed=null,baked=null;
 let layers=[],expanded=new Set(),visibility=new Map(),layerGroups=new Map();
 let exportController=null;
-let cachedBounds=null;
 
 function safeText(el,value){el.textContent=String(value);}
 function status(message,kind="ok"){
@@ -280,7 +279,6 @@ function showResults(){
   safeText($("object-count"),objects.length);
   safeText($("face-count"),objects.reduce((sum,o)=>sum+o.faces.length,0).toLocaleString());
   safeText($("layer-count"),layers.length);
-  safeText($("layer-count-small"),layers.length);
   safeText($("unit-label"),baked.unit);
   $("empty").hidden=objects.length>0;
   renderMeshDetails();
