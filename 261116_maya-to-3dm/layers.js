@@ -40,3 +40,48 @@ export function layerCatalog(objects,declaredLayers=[]){
 export function visibleOnLayer(key,visibility={}){
   return visibility instanceof Map ? visibility.get(key)!==false : visibility[key]!==false;
 }
+
+
+/** Choose the Rhino layer organization without mutating the parsed Maya data.
+ * Material mode groups objects by their assigned shading material; unresolved
+ * assignments share one Unassigned layer. Original material properties remain.
+ */
+export function applyLayerMode(model,mode="display"){
+  if(mode!=="display"&&mode!=="material")throw new Error("Unknown layer mode "+mode);
+  if(mode==="display")return {...model,layerMode:mode};
+  const colors=new Map();
+  const objects=model.objects.map(object=>{
+    const layerName=object.materialName||"Unassigned";
+    if(!colors.has(layerName)&&object.materialColor)colors.set(layerName,object.materialColor);
+    return {...object,layerName,layerColor:object.materialColor||null};
+  });
+  const names=[...new Set(objects.map(o=>o.layerName))];
+  const displayLayers=names.map(name=>({
+    name,color:colors.get(name)||layerColor(name),visible:true
+  }));
+  return {...model,objects,displayLayers,layerMode:mode};
+}
+
+/** Maya DAG hierarchy -> Rhino groups, distinct from Rhino layers.
+ * A mesh's direct parent is usually its object transform, not a meaningful
+ * multi-object Maya group. Keep ancestors above the object transform only.
+ * Rhino groups are flat, so nested ancestry is represented by membership
+ * in every ancestor group, each named with its full Maya path.
+ */
+export function objectGroupPaths(object){
+  const parts=String(object?.path||"").split("|").filter(Boolean);
+  if(parts.length<3)return [];
+  return Array.from({length:parts.length-2},(_,i)=>"|"+parts.slice(0,i+1).join("|"));
+}
+export function groupCatalog(objects){
+  const groups=new Map();
+  for(const object of objects){
+    for(const id of objectGroupPaths(object)){
+      if(!groups.has(id))groups.set(id,{
+        id,name:id.slice(1).replaceAll("|","::"),count:0
+      });
+      groups.get(id).count++;
+    }
+  }
+  return [...groups.values()];
+}
