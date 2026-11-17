@@ -1,5 +1,4 @@
-// Incremental worker protocol: one mesh at a time keeps the UI responsive,
-// avoids cloning the complete scene at once and permits real progress/cancel.
+// Incremental browser worker keeps the preview responsive during 3DM writing.
 export function exportMesh3dm(model,{onProgress=()=>{},signal}={}){
   if(!model?.objects?.length)return Promise.reject(new Error("No meshes to export"));
   return new Promise((resolve,reject)=>{
@@ -24,7 +23,10 @@ export function exportMesh3dm(model,{onProgress=()=>{},signal}={}){
       if(next<model.objects.length){
         const object=model.objects[next++];
         worker.postMessage({type:"mesh",object:{
-          name:object.name,path:object.path,vertices:object.vertices,faces:object.faces
+          name:object.name,path:object.path,layerName:object.layerName,
+          layerColor:object.layerColor,materialName:object.materialName,
+          materialColor:object.materialColor,
+          vertices:object.vertices,faces:object.faces
         }});
       }else worker.postMessage({type:"finish"});
     };
@@ -39,7 +41,11 @@ export function exportMesh3dm(model,{onProgress=()=>{},signal}={}){
       }else if(data.type==="error")fail(new Error(data.message));
     };
     worker.postMessage({type:"start",meta:{
-      unit:model.unit,objects:model.objects.map(o=>({path:o.path,name:o.name}))
+      unit:model.unit,
+      displayLayers:model.displayLayers||[],
+      objects:model.objects.map(o=>({
+        path:o.path,name:o.name,layerName:o.layerName,layerColor:o.layerColor
+      }))
     }});
   });
 }
