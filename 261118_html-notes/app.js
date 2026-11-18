@@ -63,7 +63,9 @@ function importDocument(text,name,newHandle){
  if(assetNode){const records=JSON.parse(assetNode.textContent);if(!Array.isArray(records))throw new Error('Invalid asset section');for(const a of records){if(typeof a.id==='string'&&/^[a-z0-9-]{1,80}$/i.test(a.id)&&typeof a.name==='string'&&typeof a.mime==='string'&&typeof a.data==='string'&&/^[A-Za-z0-9+/]*={0,2}$/.test(a.data)&&a.data.length%4===0)next.set(a.id,{name:a.name,mime:a.mime,data:a.data})}}
  const note=t.content.querySelector('article#html-notes-body');
  const bodyMatch=text.match(/<body(?:\s[^>]*)?>([\s\S]*?)<\/body\s*>/i);
- resetDocument(name,note?note.innerHTML:(bodyMatch?bodyMatch[1]:text),next,newHandle);
+ const body=document.createElement('template');body.innerHTML=note?note.innerHTML:(bodyMatch?bodyMatch[1]:text);
+ for(const img of body.content.querySelectorAll('img:not([data-asset])')){const match=(img.getAttribute('src')||'').match(/^data:([^;,]+);base64,([A-Za-z0-9+/]*={0,2})$/i);if(!match||!raster.has(match[1].toLowerCase())||match[2].length%4!==0)continue;const id=crypto.randomUUID();next.set(id,{name:img.getAttribute('alt')||'Image',mime:match[1].toLowerCase(),data:match[2]});img.setAttribute('data-asset',id)}
+ resetDocument(name,body.innerHTML,next,newHandle);
  status(note?'Opened local note':'Imported HTML as editable content; scripts, styling and remote images removed');
 }
 async function openFile(file,newHandle=null){if(!safeToReplace())return;try{importDocument(await file.text(),file.name,newHandle)}catch(e){status('Open failed: '+e.message)}}
@@ -97,7 +99,7 @@ async function save(as=false){try{let target=as?null:handle;if(!target&&window.s
  }catch(e){if(e.name!=='AbortError')status('Save failed: '+e.message)}}
 const readData=f=>new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]||'');r.onerror=()=>reject(r.error);r.readAsDataURL(f)});
 async function embed(files,imagesOnly=false){restore();for(const f of files){try{if(imagesOnly&&!raster.has(f.type)){status('Unsupported inline image; attach it as a file instead');continue}if(f.size>25*1024*1024&&!confirm('Embed '+f.name+' ('+Math.round(f.size/1024/1024)+' MB)? Large notes may be slow.'))continue;
- const id=crypto.randomUUID(),data=await readData(f);assets.set(id,{name:f.name,mime:f.type||'application/octet-stream',data});let e;if(raster.has(f.type)&&imagesOnly){e=dom('img');e.alt=f.name}else{e=dom('a',f.name);e.download=f.name}e.dataset.asset=id;
+ const id=crypto.randomUUID(),data=await readData(f);assets.set(id,{name:f.name,mime:f.type||'application/octet-stream',data});let e;if(raster.has(f.type)&&imagesOnly){e=dom('img');e.alt=f.name;e.src=blobURL(id)}else{e=dom('a',f.name);e.download=f.name;e.href=blobURL(id)}e.dataset.asset=id;
  insert(e.outerHTML+'<p><br></p>');status('Embedded '+f.name)
  }catch(e){status('Embed failed: '+e.message)}}info()}
 function treeButton(label,k,click){const b=dom('button');b.innerHTML=icon(k);b.append(dom('span',label));b.title=label;b.onclick=click;return b}
