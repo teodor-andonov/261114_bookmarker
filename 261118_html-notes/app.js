@@ -1,7 +1,9 @@
 import {formatHTML,highlightHTML} from './source-tools.js';
+import {copyNoteBlock,makeNoteBlock,mountNoteBlocks,examples} from './note-blocks.js';
 const $=id=>document.getElementById(id);
 const editor=$('editor'),source=$('source'),palette=$('palette'),sourcePane=$('sourcePane'),sourceHighlight=$('sourceHighlight'),sourceGutter=$('sourceGutter');
 const paths={
+ customBlock:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m10 9-3 3 3 3m4-6 3 3-3 3"/>',
  formatSource:'<path d="M4 5h16M4 10h12M4 15h16M4 20h12"/>',
  folder:'<path d="M3 7V5a2 2 0 0 1 2-2h4l3 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M12 10v6m-3-3h6"/>',
  new:'<path d="M6 3h8l4 4v14H6zM14 3v5h5m-7 3v7m-3-3h6"/>',open:'<path d="M3 7V5h7l3 3h8l-2 12H3zM3 11h18"/>',
@@ -33,7 +35,10 @@ function scrub(html) {
  const output=document.createElement('template');
  function copy(n,parent){
   if(n.nodeType===3){parent.append(document.createTextNode(n.textContent));return}
-  if(n.nodeType!==1||dropTags.has(n.tagName))return;
+  if(n.nodeType!==1)return;
+  const block=n.tagName==='TEMPLATE'&&n.content&&n.getAttribute('data-note-block')==='1'?n:n.tagName==='DIV'&&n.classList.contains('note-block-view')?[...n.children].find(x=>x.tagName==='TEMPLATE'&&x.content&&x.getAttribute('data-note-block')==='1'):null;
+  if(block){parent.append(copyNoteBlock(block));return}
+  if(dropTags.has(n.tagName))return;
   if(!supportedTags.has(n.tagName)){for(const child of n.childNodes)copy(child,parent);return}
   const e=dom(n.tagName.toLowerCase()),id=n.getAttribute('data-asset');
   if(n.tagName==='IMG'){if(!id||!assets.has(id)||!raster.has(assets.get(id).mime)){
@@ -49,14 +54,14 @@ function scrub(html) {
  for(const n of template.content.childNodes)copy(n,output.content);
  return output.innerHTML;
 }
-function hydrate(){editor.querySelectorAll('[data-asset]').forEach(e=>{const id=e.dataset.asset,a=assets.get(id);if(!a)return;const u=blobURL(id);if(e.tagName==='IMG'&&raster.has(a.mime))e.src=u;else if(e.tagName==='A'){e.href=u;e.download=a.name}})}
+function hydrate(){editor.querySelectorAll('[data-asset]').forEach(e=>{const id=e.dataset.asset,a=assets.get(id);if(!a)return;const u=blobURL(id);if(e.tagName==='IMG'&&raster.has(a.mime))e.src=u;else if(e.tagName==='A'){e.href=u;e.download=a.name}});mountNoteBlocks(editor,{edit:openBlockDialog,remove:wrapper=>{const next=wrapper.nextElementSibling;wrapper.remove();if(!editor.children.length){const p=dom('p');p.append(dom('br'));editor.append(p);placeCaret(p)}else if(next?.isConnected&&!next.matches('.note-block-view'))placeCaret(next);changed()}})}
 function canonical(){const clone=editor.cloneNode(true);const live=editor.querySelectorAll('input[type=checkbox]');clone.querySelectorAll('input[type=checkbox]').forEach((e,i)=>e.toggleAttribute('checked',live[i].checked));return scrub(clone.innerHTML)}
 function bodySource(){return sourceMode?scrub(source.value):canonical()}
-function setSource(on){if(on===sourceMode)return;closeSlash();savedRange=null;if(on){sourceMode=true;source.value=formatHTML(canonical());editor.hidden=true;sourcePane.hidden=false;source.scrollTop=0;source.scrollLeft=0;renderSource();source.focus()}else{if(!confirmSourceLoss())return;editor.innerHTML=scrub(source.value)||'<p><br></p>';hydrate();sourceMode=false;sourcePane.hidden=true;editor.hidden=false;editor.focus()}document.querySelector('[data-action=source]').classList.toggle('active',on);info()}
+function setSource(on){if(on===sourceMode)return;closeSlash();savedRange=null;if(on){sourceMode=true;source.value=formatHTML(canonical());editor.replaceChildren();editor.hidden=true;sourcePane.hidden=false;source.scrollTop=0;source.scrollLeft=0;renderSource();source.focus()}else{if(!confirmSourceLoss())return;editor.innerHTML=scrub(source.value)||'<p><br></p>';hydrate();sourceMode=false;sourcePane.hidden=true;editor.hidden=false;editor.focus()}document.querySelector('[data-action=source]').classList.toggle('active',on);info()}
 function confirmSourceLoss(){
  const t=document.createElement('template');t.innerHTML=source.value;
- const unsupported=[...t.content.querySelectorAll('*')].some(e=>!supportedTags.has(e.tagName)||[...e.attributes].some(a=>a.name==='style'||a.name==='class'||a.name==='id'||a.name.startsWith('on')));
- return !unsupported||confirm('This source includes custom elements, scripts, styles or attributes that the note editor does not preserve. Continue with the supported HTML only?');
+ const unsupported=[...t.content.querySelectorAll('*')].some(e=>!(e.tagName==='TEMPLATE'&&e.content&&e.getAttribute('data-note-block')==='1')&&(!supportedTags.has(e.tagName)||[...e.attributes].some(a=>a.name==='style'||a.name==='class'||a.name==='id'||a.name.startsWith('on'))));
+ return !unsupported||confirm('Custom markup outside a note-block template is not preserved. Wrap it in a custom block to keep it. Continue without the unsupported markup?');
 }
 function syncSourceScroll(){sourceHighlight.scrollTop=source.scrollTop;sourceHighlight.scrollLeft=source.scrollLeft;sourceGutter.scrollTop=source.scrollTop}
 let sourceLineCount=0;
@@ -120,7 +125,8 @@ function exportHTML(){const body=bodySource();const t=document.createElement('te
  // Put each binary record on its own line at the end. JSON is inert, and escaping < prevents closing its script tag.
  const json='[\n'+records.map(a=>JSON.stringify(a).replace(/</g,'\\u003c')).join(',\n')+'\n]';
  const readable=formatHTML(body);
- return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="html-notes-format" content="1">\n<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src blob: data:; style-src \'unsafe-inline\'; script-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'">\n<title>'+escapeHTML(title)+'</title>\n<style>html{color-scheme:light dark}body{font:16px/1.65 system-ui,sans-serif;max-width:760px;margin:48px auto;padding:0 22px;overflow-wrap:anywhere}h1,h2,h3{line-height:1.25}img{max-width:100%;height:auto;display:block}table{border-collapse:collapse;width:100%}td,th{border:1px solid #9998;padding:7px 10px}pre{white-space:pre-wrap;background:#8882;padding:12px}blockquote{border-left:3px solid #888;padding-left:1em;margin-left:0}li:has(>input[type=checkbox]){list-style:none}a[data-asset]{display:inline-block;border:1px solid #8888;padding:4px 8px;border-radius:4px}</style>\n</head>\n<body>\n<article id="html-notes-body">\n'+readable+'\n</article>\n<!-- Asset section: binary payloads are below. The note above can be read independently. -->\n<script type="application/json" id="html-notes-assets">\n'+json+'\n</script>\n<script>('+viewerResolve.toString()+')();</script>\n</body>\n</html>\n';
+ const blockStyle='.note-block-view{border:1px solid #8885;border-radius:7px;overflow:hidden;margin:1em 0}.note-block-bar{display:flex;align-items:center;gap:8px;padding:5px 10px;border-bottom:1px solid #8885;font:12px system-ui,sans-serif}.note-block-title{flex:1;overflow:hidden;text-overflow:ellipsis}.note-block-state{opacity:.65}.note-block-btn{font:15px system-ui,sans-serif;cursor:pointer;border:1px solid #8885;border-radius:4px;background:transparent;color:inherit;padding:3px 8px}.note-block-frame{display:block;width:100%;border:0;background:transparent}';
+ return '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="html-notes-format" content="2">\n<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src blob: data:; media-src blob: data:; font-src data:; frame-src about:; style-src \'unsafe-inline\'; script-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'">\n<title>'+escapeHTML(title)+'</title>\n<style>html{color-scheme:light dark}body{font:16px/1.65 system-ui,sans-serif;max-width:760px;margin:48px auto;padding:0 22px;overflow-wrap:anywhere}h1,h2,h3{line-height:1.25}img{max-width:100%;height:auto;display:block}table{border-collapse:collapse;width:100%}td,th{border:1px solid #9998;padding:7px 10px}pre{white-space:pre-wrap;background:#8882;padding:12px}blockquote{border-left:3px solid #888;padding-left:1em;margin-left:0}li:has(>input[type=checkbox]){list-style:none}a[data-asset]{display:inline-block;border:1px solid #8888;padding:4px 8px;border-radius:4px}'+blockStyle+'</style>\n</head>\n<body>\n<article id="html-notes-body">\n'+readable+'\n</article>\n<!-- Asset section: binary payloads are below. The note above can be read independently. -->\n<script type="application/json" id="html-notes-assets">\n'+json+'\n</script>\n<script>('+viewerResolve.toString()+')();('+mountNoteBlocks.toString()+')(document.getElementById("html-notes-body"));</script>\n</body>\n</html>\n';
 }
 async function save(as=false){if(sourceMode&&!confirmSourceLoss())return;try{let target=as?null:handle;if(!target&&window.showSaveFilePicker)target=await showSaveFilePicker({suggestedName:filename,types:[{description:'HTML note',accept:{'text/html':['.html']}}]});
  if(target){const w=await target.createWritable();await w.write(exportHTML());await w.close();handle=target;filename=target.name;dirty=false;info();status('Saved to '+filename);return}
@@ -147,7 +153,7 @@ function setLink(){if(!restore())return;const selected=getSelection()?.toString(
 function insertTable(){const n=3,rows=2,before=new Set(editor.querySelectorAll('table'));insert('<table><thead><tr>'+Array.from({length:n},(_,i)=>'<th>Heading '+(i+1)+'</th>').join('')+'</tr></thead><tbody>'+Array.from({length:rows},()=>'<tr>'+'<td><br></td>'.repeat(n)+'</tr>').join('')+'</tbody></table><p><br></p>');const table=[...editor.querySelectorAll('table')].find(t=>!before.has(t));if(table?.rows[0]?.cells[0])placeCaret(table.rows[0].cells[0])}
 function addRow(){if(!restore())return;const sel=getSelection()?.anchorNode;const row=(sel?.nodeType===1?sel:sel?.parentElement)?.closest('tr');if(!row||!editor.contains(row)){status('Place cursor inside a table first');return;}const next=dom('tr');for(const cell of row.cells){const td=dom('td');td.append(dom('br'));next.append(td)}if(row.parentElement.tagName==='THEAD'){const table=row.closest('table');(table.tBodies[0]||table.createTBody()).prepend(next)}else row.after(next);placeCaret(next.cells[0]);changed()}
 let imagePick=false;function pickAssets(images){if(sourceMode&&!restore())return;remember();imagePick=images;$('assetInput').accept=images?'image/png,image/jpeg,image/gif,image/webp,image/avif,image/bmp':'';$('assetInput').click()}
-const actions={new:['New note',newNote],open:['Open HTML file',pickOpen],folder:['Add folder',pickFolder],refresh:['Refresh folders',()=>{renderRoots();status('Folders refreshed')}],save:['Save',()=>save()],saveAs:['Save as',()=>save(true)],sidebar:['Toggle sidebar',()=>$('sidebar').hidden=!$('sidebar').hidden],source:['Toggle body source',()=>setSource(!sourceMode)],formatSource:['Format HTML source',formatSource],commands:['Command palette',()=>showCommands()],insert:['Insert block',()=>{if(!restore())return;const s=getSelection(),node=s.anchorNode,prior=node?.nodeType===3?node.data.slice(0,s.anchorOffset):'';execute('insertText',prior&&!/\s$/.test(prior)?' /':'/');refreshSlash()}],paragraph:['Paragraph',()=>execute('formatBlock','p')],h1:['Heading 1',()=>execute('formatBlock','h1')],h2:['Heading 2',()=>execute('formatBlock','h2')],h3:['Heading 3',()=>execute('formatBlock','h3')],bold:['Bold',()=>execute('bold')],italic:['Italic',()=>execute('italic')],strike:['Strikethrough',()=>execute('strikeThrough')],code:['Code block',()=>execute('formatBlock','pre')],bullet:['Bullet list',()=>execute('insertUnorderedList')],number:['Numbered list',()=>execute('insertOrderedList')],task:['Task list',makeTask],quote:['Blockquote',()=>execute('formatBlock','blockquote')],rule:['Divider',()=>execute('insertHorizontalRule')],table:['Insert table',insertTable],row:['Add table row',addRow],link:['Insert link',setLink],image:['Embed image',()=>pickAssets(true)],attach:['Embed attachment',()=>pickAssets(false)],undo:['Undo',()=>execute('undo')],redo:['Redo',()=>execute('redo')]};
+const actions={new:['New note',newNote],open:['Open HTML file',pickOpen],folder:['Add folder',pickFolder],refresh:['Refresh folders',()=>{renderRoots();status('Folders refreshed')}],save:['Save',()=>save()],saveAs:['Save as',()=>save(true)],sidebar:['Toggle sidebar',()=>$('sidebar').hidden=!$('sidebar').hidden],source:['Toggle body source',()=>setSource(!sourceMode)],customBlock:['Custom HTML block',()=>openBlockDialog()],formatSource:['Format HTML source',formatSource],commands:['Command palette',()=>showCommands()],insert:['Insert block',()=>{if(!restore())return;const s=getSelection(),node=s.anchorNode,prior=node?.nodeType===3?node.data.slice(0,s.anchorOffset):'';execute('insertText',prior&&!/\s$/.test(prior)?' /':'/');refreshSlash()}],paragraph:['Paragraph',()=>execute('formatBlock','p')],h1:['Heading 1',()=>execute('formatBlock','h1')],h2:['Heading 2',()=>execute('formatBlock','h2')],h3:['Heading 3',()=>execute('formatBlock','h3')],bold:['Bold',()=>execute('bold')],italic:['Italic',()=>execute('italic')],strike:['Strikethrough',()=>execute('strikeThrough')],code:['Code block',()=>execute('formatBlock','pre')],bullet:['Bullet list',()=>execute('insertUnorderedList')],number:['Numbered list',()=>execute('insertOrderedList')],task:['Task list',makeTask],quote:['Blockquote',()=>execute('formatBlock','blockquote')],rule:['Divider',()=>execute('insertHorizontalRule')],table:['Insert table',insertTable],row:['Add table row',addRow],link:['Insert link',setLink],image:['Embed image',()=>pickAssets(true)],attach:['Embed attachment',()=>pickAssets(false)],undo:['Undo',()=>execute('undo')],redo:['Redo',()=>execute('redo')]};
 
 const slashMenu=$('slashMenu'),slashList=$('slashList');
 const slashTools=[
@@ -155,7 +161,7 @@ const slashTools=[
  ['bullet','Bullet list','ul unordered bullets'],['number','Numbered list','ol ordered numbers'],['task','Task list','todo checkbox checklist'],
  ['quote','Quote','blockquote'],['code','Code block','pre code'],['rule','Divider','hr separator'],
  ['table','Table','grid columns'],['row','Add table row','table row'],['image','Image','picture photo paste'],['attach','Attachment','file pdf embed'],['link','Link','url hyperlink'],
- ['bold','Bold','strong'],['italic','Italic','em'],['strike','Strikethrough','strike delete']
+ ['customBlock','Custom HTML block','widget script javascript svg css interactive'],['bold','Bold','strong'],['italic','Italic','em'],['strike','Strikethrough','strike delete']
 ];
 let slashItems=[],slashIndex=0,slashQuery='',slashSuppressed=null;
 function placeCaret(el,end=false){const s=getSelection(),r=document.createRange();r.selectNodeContents(el);r.collapse(!end);s.removeAllRanges();s.addRange(r);remember()}
@@ -202,8 +208,42 @@ function updateFormatting(){const s=getSelection();if(sourceMode||!s?.anchorNode
 document.addEventListener('pointerdown',e=>{if(!slashMenu.contains(e.target)&&!editor.contains(e.target))closeSlash()});
 $('canvas').addEventListener('scroll',()=>positionSlash(),{passive:true});window.addEventListener('resize',()=>positionSlash());
 
+
+const blockDialog=$('blockDialog'),blockTitle=$('blockTitle'),blockHeight=$('blockHeight'),blockCode=$('blockCode'),blockExample=$('blockExample');
+let editingBlock=null,editingWrapper=null,blockAnchor=null,blockSourceMode=false;
+function openBlockDialog(template=null,wrapper=null){
+ closeSlash();remember();
+ editingBlock=template;editingWrapper=wrapper;blockSourceMode=sourceMode;
+ blockAnchor=null;
+ if(!template&&!sourceMode&&savedRange){
+  let node=savedRange.commonAncestorContainer;while(node&&node.parentNode!==editor&&node!==editor)node=node.parentNode;
+  if(node&&node.parentNode===editor)blockAnchor=node;
+ }
+ blockExample.value='';blockTitle.value=template?.getAttribute('data-title')||examples.blank.title;
+ blockHeight.value=template?.getAttribute('data-height')||examples.blank.height;
+ blockCode.value=template?template.innerHTML:examples.blank.code;
+ $('blockDialogHeading').textContent=template?'Edit block':'Custom block';
+ blockDialog.showModal();blockCode.focus();
+}
+blockExample.addEventListener('change',()=>{const ex=examples[blockExample.value];if(ex){blockTitle.value=ex.title;blockHeight.value=ex.height;blockCode.value=ex.code}});
+$('blockCancel').addEventListener('click',()=>blockDialog.close());
+$('blockForm').addEventListener('submit',e=>{
+ e.preventDefault();
+ const t=makeNoteBlock(blockCode.value,blockTitle.value.trim()||'Custom block',Number(blockHeight.value));
+ if(editingWrapper?.isConnected){editingWrapper.replaceWith(t);hydrate()}
+ else if(blockSourceMode&&sourceMode){const next=source.value.trimEnd();source.value=(next?next+'\n\n':'')+t.outerHTML+'\n';source.setSelectionRange(source.value.length,source.value.length);renderSource()}
+ else{
+  const p=dom('p');p.append(dom('br'));
+  if(blockAnchor?.parentNode===editor){if(!blockAnchor.textContent.trim()&&!blockAnchor.querySelector?.('img,input,table,template'))blockAnchor.replaceWith(t,p);else blockAnchor.after(t,p)}
+  else editor.append(t,p);
+  hydrate();editor.focus();placeCaret(p);
+ }
+ blockDialog.close();if(blockSourceMode&&sourceMode)source.focus();changed();status('Custom block saved in note');
+});
+blockDialog.addEventListener('close',()=>{editingBlock=null;editingWrapper=null;blockAnchor=null});
+
 function showCommands(){closeSlash();remember();$('filter').value='';renderCommands();palette.showModal();$('filter').focus()}
-function renderCommands(){const q=$('filter').value.toLowerCase();const sourceActions=new Set(['new','open','folder','refresh','save','saveAs','sidebar','source','formatSource']);$('commands').replaceChildren(...Object.entries(actions).filter(([k,[name]])=>k!=='commands'&&(!sourceMode||sourceActions.has(k))&&name.toLowerCase().includes(q)).map(([k,[name,fn]])=>{const b=treeButton(name,k,()=>{palette.close();fn()});return b}))}
+function renderCommands(){const q=$('filter').value.toLowerCase();const sourceActions=new Set(['new','open','folder','refresh','save','saveAs','sidebar','source','formatSource','customBlock']);$('commands').replaceChildren(...Object.entries(actions).filter(([k,[name]])=>k!=='commands'&&(!sourceMode||sourceActions.has(k))&&name.toLowerCase().includes(q)).map(([k,[name,fn]])=>{const b=treeButton(name,k,()=>{palette.close();fn()});return b}))}
 $('filter').oninput=renderCommands;$('filter').onkeydown=e=>{if(e.key==='Enter'){$('commands').querySelector('button')?.click();e.preventDefault()}};
 document.querySelectorAll('[data-action]').forEach(b=>{b.addEventListener('mousedown',e=>{remember();if(b.closest('.toolbar'))e.preventDefault()});b.onclick=()=>actions[b.dataset.action]?.[1]()});
 document.addEventListener('selectionchange',()=>{remember();updateFormatting();if(!slashMenu.hidden&&!slashMatch())closeSlash()});editor.addEventListener('input',e=>{changed();if(!e.isComposing)refreshSlash()});editor.addEventListener('compositionend',refreshSlash);source.addEventListener('input',changed);
