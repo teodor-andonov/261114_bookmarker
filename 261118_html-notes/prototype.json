@@ -1,0 +1,14 @@
+{
+  "title": "HTML Notes",
+  "description": "Minimal local HTML note editor with folder browsing, visual formatting and self-contained embedded images and attachments.",
+  "category": "Local-first / Writing",
+  "status": "Prototype",
+  "monogram": "HN",
+  "version": "0.1.0-alpha.1",
+  "tags": [
+    "HTML",
+    "PWA",
+    "File-first",
+    "Offline"
+  ]
+}
