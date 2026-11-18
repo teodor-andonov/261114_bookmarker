@@ -1,4 +1,6 @@
 import * as sm from "@classcad/smlibwasm";
+
+export function installWarnings(handler) { sm.setWarningHandler?.(handler); }
 import { locateParameter } from "./param-source.js";
 
 export function normalizeShapes(result) {
@@ -7,9 +9,10 @@ export function normalizeShapes(result) {
     throw new Error("main must return an SMLib Part, Shell, or array of them. Meshes are not CAD B-reps.");
   return shapes;
 }
-export function build(source, includeMesh = false) {
+export function build(source, includeMesh = false, progress = () => {}) {
   return sm.scope(() => {
     // Local, trusted model scripts, intentionally executable; not a security sandbox.
+    progress("Evaluating JavaScript source");
     const model = new Function("sm", source + "\n;return { main: typeof main === 'function' ? main : null, params: typeof defaultParams === 'undefined' ? {} : defaultParams };")(sm);
     if (!model.main) throw new Error("Define main(sm, params).");
     if (!model.params || typeof model.params !== "object" || Array.isArray(model.params)) throw new Error("defaultParams must be an object.");
@@ -18,8 +21,11 @@ export function build(source, includeMesh = false) {
       if (typeof value === "number" && !Number.isFinite(value)) return false;
       try { locateParameter(source,key); return true; } catch { return false; }
     }));
+    progress("Running main(sm, params) — SMLib modelling");
     const shapes = normalizeShapes(model.main(sm, {...model.params}));
+    progress("Created " + shapes.length + " B-rep object(s)");
     const meshes = shapes.map((shape,i) => {
+      progress("Tessellating object " + (i+1) + " of " + shapes.length);
       const mesh = sm.tessellate(shape, 0.1);
       const positions = new Float32Array(mesh.vertices);
       const indices = new Uint32Array(mesh.triangles);
@@ -27,8 +33,10 @@ export function build(source, includeMesh = false) {
       if (!positions.length || !indices.length || positions.length%3 || indices.length%3 || !positions.every(Number.isFinite) || !indices.every(x=>x<positions.length/3)) throw new Error("Invalid preview tessellation for object " + (i+1));
       return {positions,indices,normals,faces:shape.faces().length,edges:shape.edges().length,volume:shape instanceof sm.Part ? shape.volume : null};
     });
+    progress("Serializing native USDA" + (includeMesh ? " with preview meshes" : " (BRep only)"));
     const usda = sm.toUsd(shapes,{mesh: Boolean(includeMesh),materials:true});
     if (!usda.startsWith("#usda") || !/BrepArray/i.test(usda)) throw new Error("Exporter did not produce a USD BRep stage; refusing mesh-only output.");
+    progress("Serialized " + new TextEncoder().encode(usda).length + " bytes of USDA");
     return {params,meshes,usda};
   });
 }
