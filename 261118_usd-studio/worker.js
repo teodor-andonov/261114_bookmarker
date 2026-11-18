@@ -28,7 +28,7 @@ self.onmessage = ({data}) => {
       if(original.volume!==null && (!Number.isFinite(recovered.volume) || Math.abs(recovered.volume-original.volume)>Math.max(1e-5,Math.abs(original.volume)*1e-5))) throw new Error("USDA round-trip volume mismatch on object "+(i+1));
     }
     progress("Round-trip validation passed; sending preview");
-    const transfers = result.meshes.flatMap(m=>[m.positions.buffer,m.indices.buffer,...(m.normals?[m.normals.buffer]:[])]);
+    const transfers = result.meshes.flatMap(m=>[m.positions.buffer,m.indices.buffer,m.corners.buffer,m.lines.buffer,...(m.normals?[m.normals.buffer]:[])]);
     self.postMessage({type:"result",id:data.id,...result,checked,elapsed:Math.round(performance.now()-started)},transfers);
   } catch(error) {
     log(detail(error),"error");send("result",{error:String(error?.message||error)});
