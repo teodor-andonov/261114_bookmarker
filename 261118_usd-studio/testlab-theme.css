@@ -1,0 +1,1 @@
+:root[data-theme=light]{--bg:#f4f6f7;--panel:#fff;--line:#d3dce0;--text:#25323a;--muted:#53636d;--accent:#3269a5;color:var(--text);background:var(--bg)}:root[data-theme=light] #status.error{color:#a32424}
