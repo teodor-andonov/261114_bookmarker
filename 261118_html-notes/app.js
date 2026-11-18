@@ -240,6 +240,7 @@ $('blockForm').addEventListener('submit',e=>{
  }
  blockDialog.close();if(blockSourceMode&&sourceMode)source.focus();changed();status('Custom block saved in note');
 });
+blockDialog.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();e.stopPropagation();$('blockForm').requestSubmit()}});
 blockDialog.addEventListener('close',()=>{editingBlock=null;editingWrapper=null;blockAnchor=null});
 
 function showCommands(){closeSlash();remember();$('filter').value='';renderCommands();palette.showModal();$('filter').focus()}
