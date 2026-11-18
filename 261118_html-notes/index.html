@@ -18,20 +18,20 @@
 <main class="workspace">
 <header class="top"><button data-action="sidebar" title="Toggle sidebar" aria-label="Toggle sidebar"></button><span id="filename" class="filename">Untitled.html</span><span id="dirty" title="Unsaved changes"></span><span class="spacer"></span><button data-action="source" title="Toggle HTML source" aria-label="Toggle HTML source"></button><button data-action="save" title="Save (Ctrl+S)" aria-label="Save"></button><button data-action="commands" title="Commands (Ctrl+K)" aria-label="Commands"></button></header>
 <div class="toolbar" role="toolbar" aria-label="Formatting">
-<button data-action="paragraph" title="Paragraph" aria-label="Paragraph">¶</button>
-<button data-action="h1" title="Heading 1" aria-label="Heading 1">H1</button><button data-action="h2" title="Heading 2" aria-label="Heading 2">H2</button><button data-action="h3" title="Heading 3" aria-label="Heading 3">H3</button><i></i>
-<button data-action="bold" title="Bold" aria-label="Bold"></button><button data-action="italic" title="Italic" aria-label="Italic"></button><button data-action="strike" title="Strikethrough" aria-label="Strikethrough"></button><button data-action="code" title="Code block" aria-label="Code block"></button><i></i>
-<button data-action="bullet" title="Bullet list" aria-label="Bullet list"></button><button data-action="number" title="Numbered list" aria-label="Numbered list"></button><button data-action="task" title="Task list" aria-label="Task list"></button><button data-action="quote" title="Quote" aria-label="Quote"></button><button data-action="rule" title="Divider" aria-label="Divider"></button><i></i>
-<button data-action="table" title="Table" aria-label="Table"></button><button data-action="row" title="Add table row" aria-label="Add table row"></button><button data-action="link" title="Link" aria-label="Link"></button><button data-action="image" title="Embed image" aria-label="Embed image"></button><button data-action="attach" title="Embed file" aria-label="Embed file"></button><i></i>
+<button data-action="insert" title="Insert block (/)" aria-label="Insert block"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><i></i>
+<button data-action="paragraph" title="Paragraph" aria-label="Paragraph">¶</button><button data-action="h1" title="Heading 1" aria-label="Heading 1">H1</button><button data-action="h2" title="Heading 2" aria-label="Heading 2">H2</button><button data-action="h3" title="Heading 3" aria-label="Heading 3">H3</button><i></i>
+<button data-action="bold" title="Bold (Ctrl+B)" aria-label="Bold" aria-pressed="false"></button><button data-action="italic" title="Italic (Ctrl+I)" aria-label="Italic" aria-pressed="false"></button><button data-action="strike" title="Strikethrough" aria-label="Strikethrough" aria-pressed="false"></button><button data-action="link" title="Link" aria-label="Link"></button><i></i>
 <button data-action="undo" title="Undo" aria-label="Undo"></button><button data-action="redo" title="Redo" aria-label="Redo"></button>
+<span class="spacer"></span><span class="slash-hint"><kbd>/</kbd> Insert</span>
 </div>
 <div class="canvas" id="canvas">
-<article id="editor" class="document" contenteditable="true" spellcheck="true" aria-label="Note editor"><h1>Untitled</h1><p>Start writing…</p></article>
+<article id="editor" class="document" contenteditable="true" spellcheck="true" aria-label="Note editor" aria-multiline="true" role="textbox" data-placeholder="Start writing, or type / for commands"><p><br></p></article>
 <textarea id="source" spellcheck="false" aria-label="HTML body source" hidden></textarea>
 </div>
 <footer class="status"><span id="message" role="status">Local files · nothing uploaded</span><span class="spacer"></span><span id="stats"></span></footer>
 </main>
 </div>
+<div id="slashMenu" class="slash-menu" hidden><div class="slash-label">Insert or format</div><div id="slashList" role="listbox" aria-label="Editor commands"></div><div class="slash-footer"><span>↑ ↓ Navigate</span><span>↵ Select</span><span>Esc Close</span></div></div>
 <dialog id="palette"><input id="filter" placeholder="Type a command…" aria-label="Find command" autocomplete="off"><div id="commands"></div></dialog>
 <input type="file" id="openInput" accept=".html,.htm,text/html" hidden>
 <input type="file" id="folderInput" webkitdirectory multiple hidden>
