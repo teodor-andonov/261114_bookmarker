@@ -26,7 +26,10 @@
 </div>
 <div class="canvas" id="canvas">
 <article id="editor" class="document" contenteditable="true" spellcheck="true" aria-label="Note editor" aria-multiline="true" role="textbox" data-placeholder="Start writing, or type / for commands"><p><br></p></article>
-<textarea id="source" spellcheck="false" aria-label="HTML body source" hidden></textarea>
+<section id="sourcePane" class="source-pane" hidden aria-label="HTML source editor">
+<div class="source-bar"><span>HTML body</span><span class="source-note">Assets excluded · supported HTML only</span><span class="spacer"></span><button data-action="formatSource" title="Format HTML (Ctrl+Shift+F)" aria-label="Format HTML source"></button><span id="sourcePosition">Ln 1, Col 1</span></div>
+<div class="source-area"><pre id="sourceGutter" aria-hidden="true"></pre><div class="source-code"><pre id="sourceHighlight" aria-hidden="true"></pre><textarea id="source" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-label="HTML body source"></textarea></div></div>
+</section>
 </div>
 <footer class="status"><span id="message" role="status">Local files · nothing uploaded</span><span class="spacer"></span><span id="stats"></span></footer>
 </main>
