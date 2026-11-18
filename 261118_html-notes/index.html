@@ -27,7 +27,7 @@
 <div class="canvas" id="canvas">
 <article id="editor" class="document" contenteditable="true" spellcheck="true" aria-label="Note editor" aria-multiline="true" role="textbox" data-placeholder="Start writing, or type / for commands"><p><br></p></article>
 <section id="sourcePane" class="source-pane" hidden aria-label="HTML source editor">
-<div class="source-bar"><span>HTML body</span><span class="source-note">Assets excluded · supported HTML only</span><span class="spacer"></span><button data-action="formatSource" title="Format HTML (Ctrl+Shift+F)" aria-label="Format HTML source"></button><span id="sourcePosition">Ln 1, Col 1</span></div>
+<div class="source-bar"><span>HTML body</span><span class="source-note">Assets excluded · custom blocks use templates</span><span class="spacer"></span><button data-action="formatSource" title="Format HTML (Ctrl+Shift+F)" aria-label="Format HTML source"></button><span id="sourcePosition">Ln 1, Col 1</span></div>
 <div class="source-area"><pre id="sourceGutter" aria-hidden="true"></pre><div class="source-code"><pre id="sourceHighlight" aria-hidden="true"></pre><textarea id="source" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-label="HTML body source"></textarea></div></div>
 </section>
 </div>
@@ -36,6 +36,14 @@
 </div>
 <div id="slashMenu" class="slash-menu" hidden><div class="slash-label">Insert or format</div><div id="slashList" role="listbox" aria-label="Editor commands"></div><div class="slash-footer"><span>↑ ↓ Navigate</span><span>↵ Select</span><span>Esc Close</span></div></div>
 <dialog id="palette"><input id="filter" placeholder="Type a command…" aria-label="Find command" autocomplete="off"><div id="commands"></div></dialog>
+<dialog id="blockDialog" class="block-dialog" aria-labelledby="blockDialogHeading">
+<form id="blockForm">
+<header><strong id="blockDialogHeading">Custom block</strong><span class="spacer"></span><button type="button" id="blockCancel" title="Close" aria-label="Close">×</button></header>
+<div class="block-fields"><label>Title<input id="blockTitle" required maxlength="100"></label><label>Height (px)<input id="blockHeight" type="number" min="100" max="1200" required></label><label>Example<select id="blockExample"><option value="">Choose…</option><option value="blank">HTML content</option><option value="diagram">SVG diagram</option><option value="counter">Interactive counter</option><option value="parametric">Parametric facade</option></select></label></div>
+<label class="block-code-label">HTML / CSS / JavaScript<textarea id="blockCode" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Custom block source"></textarea></label>
+<footer><span>Scripts are off until you explicitly run this block.</span><span class="spacer"></span><button type="submit" class="block-save">Save block</button></footer>
+</form>
+</dialog>
 <input type="file" id="openInput" accept=".html,.htm,text/html" hidden>
 <input type="file" id="folderInput" webkitdirectory multiple hidden>
 <input type="file" id="assetInput" multiple hidden>
