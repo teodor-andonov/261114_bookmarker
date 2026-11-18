@@ -37,6 +37,13 @@ test("production browser worker initializes, logs stages and exports USDA under 
     await page.click("#run");
     await page.waitForFunction(()=>document.querySelector("#export").disabled===false,{},{timeout:30000});
     assert.match(await page.locator("#status").textContent(),/Ready/);
+    await page.setViewportSize({width:691,height:900});
+    await page.click("#commands");await page.locator("#search").fill("Fluid twist tower");
+    await page.getByRole("button",{name:"Demo: Fluid twist tower",exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector("#export").disabled===false,{},{timeout:60000});
+    assert.match(await page.locator("#name").textContent(),/fluid-twist-tower/);
+    assert.match(await page.locator("#status").textContent(),/Ready/);
+    assert.match(await page.locator("#usda").textContent(),/BrepArray/);
   }catch(e){console.error(capture.join("\n"));if(page)console.error("ENGINE LOG:",await page.locator("#engineLog").textContent().catch(()=>""),"STATUS:",await page.locator("#status").textContent().catch(()=>""));throw e;}
   finally{await browser?.close();await new Promise(r=>server.close(r));}
 });

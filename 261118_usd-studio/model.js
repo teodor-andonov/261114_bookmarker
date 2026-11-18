@@ -2,6 +2,7 @@ import * as sm from "@classcad/smlibwasm";
 
 export function installWarnings(handler) { sm.setWarningHandler?.(handler); }
 import { locateParameter } from "./param-source.js";
+import { expandPreview } from "./preview.js";
 
 export function normalizeShapes(result) {
   const shapes = Array.isArray(result) ? result.flat(Infinity) : [result];
@@ -26,12 +27,28 @@ export function build(source, includeMesh = false, progress = () => {}) {
     progress("Created " + shapes.length + " B-rep object(s)");
     const meshes = shapes.map((shape,i) => {
       progress("Tessellating object " + (i+1) + " of " + shapes.length);
-      const mesh = sm.tessellate(shape, 0.1);
+      const mesh = sm.tessellate(shape, 0.01);
       const positions = new Float32Array(mesh.vertices);
       const indices = new Uint32Array(mesh.triangles);
-      const normals = mesh.normals && mesh.normals.length === positions.length ? new Float32Array(mesh.normals) : null;
       if (!positions.length || !indices.length || positions.length%3 || indices.length%3 || !positions.every(Number.isFinite) || !indices.every(x=>x<positions.length/3)) throw new Error("Invalid preview tessellation for object " + (i+1));
-      return {positions,indices,normals,faces:shape.faces().length,edges:shape.edges().length,volume:shape instanceof sm.Part ? shape.volume : null};
+      const {corners,normals}=expandPreview(positions,indices,mesh.normals);
+      if(!normals) console.warn("Kernel provided no usable corner normals for object "+(i+1)+"; using flat preview shading.");
+      const edges=shape.edges(), lines=[];
+      // Draw actual BRep edges instead of crease edges extracted from triangles.
+      for(const edge of edges){
+        if(edge.isSeam)continue;
+        try{
+          const n=edge.geomType==="line"?1:64;
+          let prev=edge.pointAt(0);
+          for(let j=1;j<=n;j++){
+            const next=edge.pointAt(j/n);
+            const seg=[prev.x,prev.y,prev.z,next.x,next.y,next.z];
+            if(seg.every(Number.isFinite))lines.push(...seg);
+            prev=next;
+          }
+        }catch(error){console.warn("Preview edge sampling failed: "+error.message);}
+      }
+      return {positions,indices,corners,normals,lines:new Float32Array(lines),faces:shape.faces().length,edges:edges.length,volume:shape instanceof sm.Part ? shape.volume : null};
     });
     progress("Serializing native USDA" + (includeMesh ? " with preview meshes" : " (BRep only)"));
     const usda = sm.toUsd(shapes,{mesh: Boolean(includeMesh),materials:true});
