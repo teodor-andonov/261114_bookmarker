@@ -1,10 +1,10 @@
 {
   "title": "HTML Notes",
-  "description": "Minimal local HTML note editor with folder browsing, visual formatting and self-contained embedded images and attachments.",
+  "description": "File-first HTML notes with rich editing, embedded assets and sandboxed custom HTML, SVG and JavaScript blocks.",
   "category": "Local-first / Writing",
   "status": "Prototype",
   "monogram": "HN",
-  "version": "0.3.0-alpha.1",
+  "version": "0.4.0-alpha.1",
   "tags": [
     "HTML",
     "PWA",
