@@ -16,3 +16,7 @@ Worker scopes free transient kernel objects. It reopens generated USDA with stri
 Commands: Ctrl/Cmd+K, Run Ctrl/Cmd+Enter, Save Ctrl/Cmd+S. Local file picker or download fallback. No direct USDA editing or importing. No loft/sweep example in this initial version.
 
 Development: npm install; npm test; npm run build. Runtime verification and independent schema validation are required before claiming full interoperability. Kernel package MIT/Apache-2.0/OFL-1.1; preserve upstream notices when distributing.
+
+## 0.1.1-alpha.1 — worker startup and diagnostics
+
+Worker sends ready only after dynamic WASM import has resolved; the UI queues builds until then. Explicit stage messages, user script console output, native warning handler and initialization exceptions feed the copyable Engine Output panel. Startup has a 45 s watchdog and each modelling stage a 60 s watchdog. Stop terminates the worker; Run restarts it. Browser CI serves the compiled app under the GitHub Pages subpath and requires actual WASM initialization, geometry generation, log messages, USDA output and restart. Run locally with `npm run build && npx playwright install chromium && npm run test:browser`.
