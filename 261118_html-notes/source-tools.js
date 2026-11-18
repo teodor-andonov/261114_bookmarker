@@ -1,7 +1,7 @@
 // Local, dependency-free HTML source tools. Never evaluate source.
 const voidTags=new Set('area base br col embed hr img input link meta param source track wbr'.split(' '));
 const rawTags=new Set(['script','style','textarea','title','pre']);
-const blockTags=new Set('address article aside blockquote div dl dt dd figure figcaption footer form h1 h2 h3 h4 h5 h6 header hr main nav ol p pre section table caption colgroup thead tbody tfoot tr td th ul li details summary'.split(' '));
+const blockTags=new Set('address article aside blockquote div dl dt dd figure figcaption footer form h1 h2 h3 h4 h5 h6 header hr main nav ol p pre section template table caption colgroup thead tbody tfoot tr td th ul li details summary'.split(' '));
 const containers=new Set('root article aside blockquote div dl figure footer header main nav ol section table colgroup thead tbody tfoot tr ul li td th details'.split(' '));
 const escape=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 export function tokenizeHTML(source){
