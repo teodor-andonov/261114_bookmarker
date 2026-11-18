@@ -1,0 +1,13 @@
+{
+  "title": "USD Studio",
+  "description": "Code-driven CAD with NVIDIA SMLib B-reps, live parameters and native USDA output.",
+  "category": "CAD / Code",
+  "status": "Prototype",
+  "monogram": "USD",
+  "tags": [
+    "SMLib",
+    "USD BRep",
+    "WASM",
+    "File-first"
+  ]
+}
