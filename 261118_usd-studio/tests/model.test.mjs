@@ -59,3 +59,4 @@ test("Galaxy SOHO detailed components and named material metadata",()=>{
    assert.ok(other?.color!=null,m.name+" missing color");
  }
 });
+

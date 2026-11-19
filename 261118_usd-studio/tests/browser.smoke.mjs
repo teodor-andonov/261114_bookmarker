@@ -6,7 +6,7 @@ import {readFile} from "node:fs/promises";
 import {resolve,extname} from "node:path";
 const root=resolve("build"),prefix="/261114_testlab/261118_usd-studio/";
 const mime={".html":"text/html",".js":"text/javascript",".css":"text/css",".wasm":"application/wasm",".json":"application/json"};
-test("production browser worker initializes, logs stages and exports USDA under Pages subpath",{timeout:200000},async()=>{
+test("production browser worker initializes, logs stages and exports USDA under Pages subpath",{timeout:240000},async()=>{
   const server=createServer(async(req,res)=>{
     try{
       const pathname=new URL(req.url,"http://localhost").pathname;
@@ -29,9 +29,11 @@ test("production browser worker initializes, logs stages and exports USDA under 
     await page.goto("http://127.0.0.1:"+server.address().port+prefix);
     await page.waitForFunction(()=>document.querySelector("#export").disabled===false,{},{timeout:65000});
     const log=await page.locator("#engineLog").textContent();
-    for(const line of ["Worker started","WASM initialized","Running main","Tessellating","Serializing native USDA","Round-trip validation passed","complete"])assert.ok(log.includes(line),line);
+    for(const line of ["Worker started","WASM initialized","Running main","Tessellating","complete"])assert.ok(log.includes(line),line);
     console.log(log);
-    assert.match(await page.locator("#usda").textContent(),/BrepArray/);
+    assert.ok(!log.includes("Serializing native USDA"));
+    await page.click("#usdTab");await page.waitForFunction(()=>document.querySelector("#usda").textContent.includes("BrepArray"),{},{timeout:30000});
+    await page.click("#jsTab");
     await page.click("#stop");
     assert.equal(await page.locator("#export").isDisabled(),true);
     await page.click("#run");
@@ -43,12 +45,18 @@ test("production browser worker initializes, logs stages and exports USDA under 
     await page.waitForFunction(()=>document.querySelector("#export").disabled===false,{},{timeout:60000});
     assert.match(await page.locator("#name").textContent(),/fluid-twist-tower/);
     assert.match(await page.locator("#status").textContent(),/Ready/);
-    assert.match(await page.locator("#usda").textContent(),/BrepArray/);
+    await page.click("#usdTab");await page.waitForFunction(()=>document.querySelector("#usda").textContent.includes("BrepArray"),{},{timeout:30000});await page.click("#jsTab");
     await page.click("#commands");await page.locator("#search").fill("Galaxy SOHO");
     await page.getByRole("button",{name:"Demo: Galaxy SOHO — architectural study",exact:true}).click();
     await page.waitForFunction(()=>document.querySelector("#export").disabled===false,{},{timeout:95000});
     assert.match(await page.locator("#stats").textContent(),/objects/);
-    assert.match(await page.locator("#usda").textContent(),/Tower_A_Rounded_Roof_Crown/);
+    assert.match(await page.locator("#stats").textContent(),/209 objects/);
+    await page.selectOption("#quality","draft");await page.waitForFunction(()=>document.querySelector("#status").textContent.includes("draft preview"),{},{timeout:60000});
+    await page.selectOption("#quality","standard");await page.waitForFunction(()=>document.querySelector("#status").textContent.includes("standard preview"),{},{timeout:60000});
+    assert.match(await page.locator("#stats").textContent(),/209 cached/);
+    assert.match(await page.locator("#engineLog").textContent(),/Reusing existing exact BRep model/);
+    await page.click("#usdTab");await page.waitForFunction(()=>document.querySelector("#usda").textContent.includes("Tower_A_Rounded_Roof_Crown"),{},{timeout:60000});
+    assert.match(await page.locator("#engineLog").textContent(),/Round-trip validation passed/);
     console.log("Galaxy browser model:",await page.locator("#stats").textContent());
   }catch(e){console.error(capture.join("\n"));if(page)console.error("ENGINE LOG:",await page.locator("#engineLog").textContent().catch(()=>""),"STATUS:",await page.locator("#status").textContent().catch(()=>""));throw e;}
   finally{await browser?.close();await new Promise(r=>server.close(r));}
