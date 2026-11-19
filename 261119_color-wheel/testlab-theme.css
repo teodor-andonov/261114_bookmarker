@@ -1,0 +1,2 @@
+:root[data-theme="dark"]{color-scheme:dark;--bg:#17191b;--panel:#202326;--ink:#e7e9eb;--muted:#a4aab0;--line:#383d41;--accent:#98acfa;--label:#f3f4f5;--halo:#181b1e}
+:root[data-theme="light"]{color-scheme:light;--bg:#f4f5f5;--panel:#fff;--ink:#212528;--muted:#626970;--line:#dce0e2;--accent:#405fba;--label:#1d2328;--halo:#fff}

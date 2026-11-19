@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Color Wheel — Testlab</title>
+<style>
+:root{color-scheme:light;--bg:#f4f5f5;--panel:#fff;--ink:#212528;--muted:#626970;--line:#dce0e2;--accent:#405fba;--label:#1d2328;--halo:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,sans-serif}
+main{max-width:1200px;margin:auto;padding:28px 28px 80px}
+h1,h2,p{margin:0}h1{font-size:24px;font-weight:650;letter-spacing:-.04em}h2{font-size:13px;font-weight:650}
+header{margin-bottom:24px}header p,.hint{color:var(--muted);font-size:12px}
+.layout{display:grid;grid-template-columns:minmax(280px,1fr) minmax(280px,1fr);gap:16px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:20px;min-width:0}
+.wheel-panel{display:grid;justify-items:center;gap:12px}
+.wheel-wrap{width:100%;max-width:490px;padding:28px;box-sizing:border-box}
+#surface{position:relative;aspect-ratio:1;cursor:crosshair;touch-action:none}
+canvas{display:block;width:100%;height:100%;border-radius:50%;outline:1px solid var(--line)}
+#overlay{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.wheel-label{fill:var(--label);stroke:var(--halo);stroke-width:3px;paint-order:stroke;text-anchor:middle;dominant-baseline:central;font:12px system-ui,sans-serif;font-weight:600}
+.axis{display:flex;justify-content:space-between;width:100%;font-size:11px;color:var(--muted)}
+.side{display:grid;gap:16px}
+.control{display:grid;grid-template-columns:1fr 76px;gap:3px 12px;align-items:center;margin-top:14px}
+.control label{font-weight:500;font-size:12px}
+.control input[type=range]{grid-column:1;grid-row:2;width:100%;margin:0;accent-color:var(--accent)}
+.control input[type=number]{grid-column:2;grid-row:1/span 2;width:100%;padding:6px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);font:inherit;font-variant-numeric:tabular-nums}
+.step{margin-top:18px;border-top:1px solid var(--line);padding-top:12px;display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}
+#step{color:var(--ink);font-variant-numeric:tabular-nums}
+#palette{display:flex;height:52px;overflow:hidden;border-radius:4px;border:1px solid var(--line);margin:12px 0}
+.chip{flex:1;min-width:0}
+.table-wrap{overflow:auto;max-height:430px}
+table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+td,th{text-align:right;padding:7px 5px;border-bottom:1px solid var(--line)}
+th{position:sticky;top:0;background:var(--panel);font-weight:500;color:var(--muted)}
+td:first-child,th:first-child,td:last-child,th:last-child{text-align:left}
+.swatch{display:block;width:20px;height:20px;border-radius:3px;border:1px solid var(--line)}
+@media(max-width:780px){main{padding:20px 12px 80px}.layout{grid-template-columns:1fr}.panel{padding:14px}.wheel-wrap{max-width:420px}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>Color Wheel</h1><p>Parametric HSL sampling · equally spaced hues</p></header>
+<div class="layout">
+<section class="panel wheel-panel">
+<div class="axis"><span>Hue: clockwise from top</span><span>0° = red</span></div>
+<div class="wheel-wrap"><div id="surface"><canvas id="wheel" width="500" height="500" aria-label="HSL color wheel; use the adjacent numeric controls to adjust the sample locations"></canvas><svg id="overlay" viewBox="0 0 500 500" aria-hidden="true"></svg></div></div>
+<p class="hint">Click or drag anywhere on the wheel to move the first sample and change saturation.</p>
+</section>
+<div class="side">
+<section class="panel">
+<h2>Parameters</h2>
+<div class="control"><label for="count">Segments</label><input id="count" type="range" min="1" max="72" step="1" value="6"><input id="countNumber" aria-label="Segments numeric value" type="number" min="1" max="72" step="1" value="6"></div>
+<div class="control"><label for="offset">Hue offset (°)</label><input id="offset" type="range" min="0" max="360" step="0.1" value="0"><input id="offsetNumber" aria-label="Hue offset (°) numeric value" type="number" min="0" max="360" step="0.1" value="0"></div>
+<div class="control"><label for="sat">Saturation (%)</label><input id="sat" type="range" min="0" max="100" step="0.1" value="80"><input id="satNumber" aria-label="Saturation (%) numeric value" type="number" min="0" max="100" step="0.1" value="80"></div>
+<div class="control"><label for="light">Lightness (%)</label><input id="light" type="range" min="0" max="100" step="0.1" value="50"><input id="lightNumber" aria-label="Lightness (%) numeric value" type="number" min="0" max="100" step="0.1" value="50"></div>
+<div class="step"><span>Angular interval (degrees / turns)</span><output id="step"></output></div>
+</section>
+<section class="panel">
+<h2>Sampled colors</h2><div id="palette" aria-hidden="true"></div>
+<div class="table-wrap"><table><thead><tr><th scope="col">Color</th><th scope="col">#</th><th scope="col">H (°)</th><th scope="col">H (0–1)</th><th scope="col">S</th><th scope="col">L</th><th scope="col">HEX</th></tr></thead><tbody id="samples"></tbody></table></div>
+<p class="hint" style="margin-top:12px">H is wrapped to [0°, 360°); normalized hue is H / 360. Saturation and lightness are percentages. Equal hue intervals are not necessarily perceptually uniform.</p>
+</section>
+</div></div>
+</main>
+<script src="./app.js" defer></script>
+</body>
+</html>
