@@ -1,0 +1,12 @@
+import {el,button} from '../../core/dom.js';import {C,active,observe,visible,qualified,select,hide,close} from '../model/index.js';
+function mount(ws,root){const bar=el('div',{class:'toolbar'}),tree=el('div',{class:'panecontent'}),expanded=new Map();const filter=el('input',{placeholder:'Display name/layer filter',onInput:e=>ws.context.set(C.filter,{query:e.target.value})});bar.append(filter,button('Clear',()=>ws.context.set(C.filter,{query:''})));root.append(bar,tree);
+ function render(){if(document.activeElement!==filter)filter.value=ws.context.get(C.filter).query||'';const selected=new Set(ws.context.get(C.selection).map(r=>qualified(r.modelId,r.objectId)));const nodes=[];
+ for(const m of active(ws)){const d=el('details',{open:expanded.get(m.id)??true}),summary=el('summary',{text:m.name+' ('+m.objects.length+')'+(m.stale?' — STALE':'')});d.append(summary,button('Close model',()=>close(ws,m.id)));d.ontoggle=()=>expanded.set(m.id,d.open);
+ const groups=new Map();for(const o of m.objects){const key=o.group||'Objects';if(!groups.has(key))groups.set(key,[]);groups.get(key).push(o);}
+ for(const [group,objects] of groups){const key=m.id+'|'+group,g=el('details',{open:expanded.get(key)??true}),s=el('summary',{text:group});g.ontoggle=()=>expanded.set(key,g.open);g.append(s,button('Hide group',()=>{const n={...ws.context.get(C.visibility)};for(const o of objects)n[qualified(m.id,o.id)]=true;ws.context.set(C.visibility,n);}),button('Show group',()=>{const n={...ws.context.get(C.visibility)};for(const o of objects)delete n[qualified(m.id,o.id)];ws.context.set(C.visibility,n);}));
+ for(const o of objects){const hidden=!!ws.context.get(C.visibility)[qualified(m.id,o.id)],r=el('div',{class:'treeRow'+(selected.has(qualified(m.id,o.id))?' selected':'')});const b=button(o.name||o.id,()=>select(ws,m,o));b.className='grow';r.append(button(hidden?'○':'●',()=>hide(ws,m,o,!hidden)),b);if(!visible(ws,m,o))r.classList.add('muted');if(!o.geometry?.display)r.append(el('span',{text:'△',title:'No display geometry'}));g.append(r);}d.append(g);}
+ if(m.warning)d.append(el('p',{class:'muted',text:m.warning}));nodes.push(d);}
+ if(!nodes.length)nodes.push(el('p',{class:'muted',text:'No active models. Open a compatible source.'}));tree.replaceChildren(...nodes);}
+ return observe(ws,render);
+}
+export default {id:'model-explorer',requires:['model'],tools:[{id:'model-explorer',title:'Model tree',mount}]};

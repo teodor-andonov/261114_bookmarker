@@ -1,0 +1,15 @@
+export const C={active:'cad.activeModels',selection:'cad.selection',visibility:'cad.visibility',filter:'cad.filter'};
+export const qualified=(modelId,objectId)=>JSON.stringify([modelId,objectId]);
+export const ref=(modelId,objectId)=>({modelId,objectId});
+export const modelId=(handler,path)=>handler+':'+path;
+export const active=ws=>ws.context.get(C.active).map(id=>ws.resources.get(id)).filter(Boolean);
+export const find=(ws,r)=>ws.resources.get(r.modelId)?.objects.find(o=>o.id===r.objectId);
+export function visible(ws,m,o){const hidden=ws.context.get(C.visibility),filter=ws.context.get(C.filter);const s=(o.name+' '+(o.group||'')).toLowerCase();return o.nativeVisible!==false&&!hidden[qualified(m.id,o.id)]&&(!filter.query||s.includes(filter.query.toLowerCase()));}
+export function select(ws,m,o){ws.context.set(C.selection,o?[ref(m.id,o.id)]:[]);}
+export function hide(ws,m,o,hidden){ws.context.update(C.visibility,v=>{const n={...v},k=qualified(m.id,o.id);if(hidden)n[k]=true;else delete n[k];return n;});}
+export function reconcile(ws){const ids=new Set(ws.context.get(C.active));ws.context.update(C.selection,s=>s.filter(r=>ids.has(r.modelId)&&find(ws,r)));ws.context.update(C.visibility,v=>Object.fromEntries(Object.entries(v).filter(([k])=>{const [modelId,objectId]=JSON.parse(k);return ids.has(modelId)&&find(ws,{modelId,objectId});})));}
+export function publish(ws,model){if(!model.id||!Array.isArray(model.objects)||new Set(model.objects.map(o=>o.id)).size!==model.objects.length)throw Error('Invalid Model or duplicate object IDs');
+ ws.resources.publish(model.id,model);ws.context.update(C.active,v=>v.includes(model.id)?v:[...v,model.id]);reconcile(ws);}
+export function close(ws,id){ws.context.update(C.active,v=>v.filter(x=>x!==id));ws.resources.remove(id);reconcile(ws);const cleanup=ws.state.get('cleanup:'+id);if(cleanup){cleanup();ws.state.delete('cleanup:'+id);}}
+export function observe(ws,fn){let off=[];const a=ws.context.subscribe(C.active,ids=>{off.forEach(f=>f());off=ids.map(id=>ws.resources.subscribe(id,fn));fn();});const others=[C.selection,C.visibility,C.filter].map(c=>ws.context.subscribe(c,fn));return()=>{a();off.forEach(f=>f());others.forEach(f=>f());};}
+export default {id:'model',requires:['file'],types:[{id:'model@1'},{id:'display-geometry@1'}],channels:[{id:C.active,default:[]},{id:C.selection,default:[]},{id:C.visibility,default:{}},{id:C.filter,default:{query:''}}],operations:[{id:'model.close',run:close}],save:ws=>({sources:active(ws).map(m=>({handler:m.handler,path:m.source})),visibility:ws.context.get(C.visibility),filter:ws.context.get(C.filter)}),restore:async(ws,state)=>{for(const s of state?.sources||[]){const handler=ws.registry.handlers.get(s.handler);if(!handler){ws.notify('Missing handler '+s.handler,true);continue;}if(handler.restore)try{await handler.restore(ws,s.path);}catch(e){ws.notify('Unable to restore '+s.path+': '+e.message,true);}else ws.notify('Run required to restore '+s.path);}if(state?.visibility)ws.context.set(C.visibility,state.visibility);if(state?.filter)ws.context.set(C.filter,state.filter);}};

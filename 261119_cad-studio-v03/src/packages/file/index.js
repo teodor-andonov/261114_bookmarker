@@ -1,0 +1,1 @@
+export default {id:'file',types:[{id:'file@1'},{id:'folder@1'}]};

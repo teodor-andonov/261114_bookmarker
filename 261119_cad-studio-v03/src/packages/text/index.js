@@ -1,0 +1,1 @@
+export default {id:'text',requires:['file'],types:[{id:'text@1'}]};

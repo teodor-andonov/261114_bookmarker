@@ -1,0 +1,2 @@
+import {C} from '../model/index.js';
+export default {id:'selection-observer',requires:['model'],tools:[{id:'selection-observer',title:'Selection test',mount(ws,root){return ws.context.subscribe(C.selection,value=>{root.textContent=JSON.stringify(value);});}}]};
