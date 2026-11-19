@@ -48,7 +48,7 @@ function schemeSVG(settings){
   const rect=(x,y,w,h,fill,rx=0)=>'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="'+rx+'" fill="'+fill+'"/>';
   const items=rows.map((row,i)=>{
     const x=pad+(i%columns)*cellW,y=top+Math.floor(i/columns)*cellH;
-    return '<g id="sample-'+(i+1)+'">'+rect(x,y,cellW-10,68,row.hex,3)+txt(x,y+83,row.hex,12,"#17202a",600)+txt(x,y+98,"H "+Number(row.h.toFixed(2))+"°",11)+'</g>';
+    return '<g id="sample-'+(i+1)+'">'+rect(x,y,cellW-10,68,row.hex,3)+txt(x,y+83,row.hex,12,"#17202a",600)+txt(x,y+98,"H "+hueFixed(row.h,360)+"°",11)+'</g>';
   }).join("\n");
   const description=p.count+" colors · offset "+p.offset+"° · span "+p.span+"° · S "+p.sat+"% · L "+p.light+"%";
   return '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="'+SVG_NS+'" width="'+width+'" height="'+height+'" viewBox="0 0 '+width+' '+height+'">\n<title>Color Wheel scheme</title>\n<desc>'+escapeXML(description)+'</desc>\n<metadata id="testlab-color-wheel-scheme">'+escapeXML(JSON.stringify(data))+'</metadata>\n'+rect(0,0,width,height,"#ffffff")+txt(pad,32,"COLOR WHEEL",17,"#17202a",650)+txt(pad,57,description,11)+items+'\n</svg>\n';
@@ -79,20 +79,21 @@ const controls=[
 const canvas=$("wheel"),ctx=canvas.getContext("2d"),overlay=$("overlay"),ns="http://www.w3.org/2000/svg";
 let previousLight=null,currentRows=[],copySequence=0;
 const val=k=>Number($(k).value);
-const fixed=(n,d=2)=>Number(n.toFixed(d)).toString();
+const fixed=n=>Number(n.toFixed(3)).toString();
+// Hue is cyclic: keep rounded values inside [0, 360) or [0, 1).
+const hueFixed=(n,period)=>String(Number(fixed(n))%period);
 function formatColor(p,format){
   const c=rgb(p.h,p.s,p.l);
-  const h=Number(p.h.toFixed(6))%360;
-  const t=(Math.round(p.t*1e9)%1e9)/1e9;
+  const h=hueFixed(p.h,360),t=hueFixed(p.t,1);
   switch(format){
     case "rgb":return "rgb("+c.join(", ")+")";
     case "rgb255":return c.join(", ");
-    case "rgb1":return c.map(x=>(x/255).toFixed(6)).join(", ");
-    case "hsl":return "hsl("+fixed(h,6)+", "+fixed(p.s*100,3)+"%, "+fixed(p.l*100,3)+"%)";
-    case "hsl360":return [fixed(h,6),fixed(p.s*100,3),fixed(p.l*100,3)].join(", ");
-    case "hsl1":return [t.toFixed(9),p.s.toFixed(6),p.l.toFixed(6)].join(", ");
-    case "hue360":return fixed(h,6);
-    case "hue1":return t.toFixed(9);
+    case "rgb1":return c.map(x=>fixed(x/255)).join(", ");
+    case "hsl":return "hsl("+h+", "+fixed(p.s*100)+"%, "+fixed(p.l*100)+"%)";
+    case "hsl360":return [h,fixed(p.s*100),fixed(p.l*100)].join(", ");
+    case "hsl1":return [t,fixed(p.s),fixed(p.l)].join(", ");
+    case "hue360":return h;
+    case "hue1":return t;
     default:return p.hex;
   }
 }
@@ -227,7 +228,7 @@ function render(){
   const n=val("count"),off=val("offset"),s=val("sat")/100,l=val("light")/100;
   const span=val("span"),rows=sample(n,off,s,l,span);currentRows=rows;
   drawWheel(l);
-  const step=interval(n,span);$("step").textContent=fixed(step)+"° / "+(step/360).toFixed(6);
+  const step=interval(n,span);$("step").textContent=fixed(step)+"° / "+fixed(step/360);
   overlay.replaceChildren();
   if(s>0){
     circle(250,250,250*s,{fill:"none",stroke:"#fff","stroke-width":1,"stroke-opacity":.7,"stroke-dasharray":"3 5"});
@@ -241,7 +242,7 @@ function render(){
   rows.forEach((p,i)=>{if(s===0&&i>0)return;
     const marker=circle(p.x,p.y,n>24?5:8,{fill:p.hex,stroke:"#fff","stroke-width":2});
     marker.setAttribute("class","marker");
-    const t=document.createElementNS(ns,"title");t.textContent="Sample "+(i+1)+" · "+fixed(p.h)+"°";marker.append(t);
+    const t=document.createElementNS(ns,"title");t.textContent="Sample "+(i+1)+" · "+hueFixed(p.h,360)+"°";marker.append(t);
     circle(p.x,p.y,n>24?6.5:9.5,{fill:"none",stroke:"#222","stroke-width":1});
     if(n<=24 && (s>0.14||i===0)){
       const label=document.createElementNS(ns,"text"),a=p.h*Math.PI/180;
@@ -265,7 +266,7 @@ function renderSamples(){
     const tr=document.createElement("tr");
     const sw=document.createElement("button");sw.type="button";sw.className="swatch";sw.style.background=p.hex;sw.title="Copy sample "+(i+1);sw.setAttribute("aria-label",sw.title);sw.addEventListener("click",()=>copySample(p,i));
     const first=document.createElement("td");first.append(sw);tr.append(first);
-    const cells=[i+1,fixed(p.h,4)+"°",p.t.toFixed(6),fixed(p.s*100)+"%",fixed(p.l*100)+"%"];
+    const cells=[i+1,hueFixed(p.h,360)+"°",hueFixed(p.t,1),fixed(p.s*100)+"%",fixed(p.l*100)+"%"];
     for(const v of cells){const td=document.createElement("td");td.textContent=v;tr.append(td);}
     const value=document.createElement("button");value.type="button";value.className="copy-value";value.textContent=formatColor(p,format);value.title="Copy "+value.textContent;value.addEventListener("click",()=>copySample(p,i));const td=document.createElement("td");td.append(value);tr.append(td);
     return tr;
