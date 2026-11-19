@@ -1,10 +1,10 @@
 {
   "title": "Color Wheel",
-  "description": "Parametric HSL color wheel with equally spaced samples, adjustable hue offset, saturation and lightness, normalized hue and HEX values.",
+  "description": "Full-workspace parametric HSL wheel, circular or arc sampling, interchangeable color formats and copyable palettes.",
   "category": "Design / Color",
   "status": "Prototype",
   "monogram": "CW",
-  "version": "0.1.0-alpha.1",
+  "version": "0.2.0-alpha.1",
   "tags": [
     "HSL",
     "Color",
