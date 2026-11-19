@@ -1,0 +1,3 @@
+import {mkdir,readdir,copyFile,writeFile,access} from 'node:fs/promises';import {spawnSync} from 'node:child_process';
+try{await access('demo/fixture.3dm');}catch{const result=spawnSync(process.execPath,['scripts/create-fixture.mjs'],{stdio:'inherit'});if(result.status!==0)throw Error('Failed to generate 3DM fixture');}
+await mkdir('public/examples',{recursive:true});const names=(await readdir('demo')).filter(n=>/\.(js|json|3dm)$/.test(n));for(const name of names)await copyFile('demo/'+name,'public/examples/'+name);await writeFile('public/examples/list.json',JSON.stringify(names));

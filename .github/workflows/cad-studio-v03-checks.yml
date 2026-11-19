@@ -20,7 +20,6 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - run: npm test
-      - run: npm run fixture
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser

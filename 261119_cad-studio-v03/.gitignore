@@ -3,3 +3,6 @@ dist/
 demo/fixture.3dm
 playwright-report/
 test-results/
+
+build/
+public/examples/

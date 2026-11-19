@@ -6,7 +6,7 @@ Workspace
   Context — exactly one per workspace
   Resources — shared evaluated revisions
   Host — mounted tool instances and layout
-  Files — authorized local project service
+  Files — browser-native folder handle adapter
 ```
 
 The composition root is src/catalog.js. Core imports no CAD-specific modules. Packages are ordinary ES modules. A package may contribute types, handlers, channels, operations and tools in a single descriptor, declare requires, and provide optional save/restore hooks. Registry.add rejects missing dependencies and duplicate ids. Packages are loaded explicitly, in dependency order; the blank workspace loads none. File/Text-only workspace does not load the Model or geometry engine packages. No graph scheduler, links, ports, or nested contexts.
@@ -17,7 +17,7 @@ The composition root is src/catalog.js. Core imports no CAD-specific modules. Pa
 - Context.get/set/update/subscribe. Subscribe fires immediately and returns an unsubscribe. Duplicate JSON-like values are suppressed. Channel values are registered by packages, not core.
 - Resources.get/publish/remove/subscribe identifies a logical or derived representation by stable ID. Retain the latest revision and notify its consumers. Source bytes live in ordinary files and are read by the provider.
 - A tool mount(workspace, root, settings, panelId) returns a disposal function. Settings are panel-local and serialized with the layout; context is never duplicated. Moving tabs moves the existing mounted DOM. Closing tabs calls disposal. Workspaces separately own resources/providers and contexts.
-- Files offers project/list/read/text/write/writeText/mkdir/rename/import/watch/draft. The API uses SHA-256 revisions for optimistic concurrency, atomic temporary writes and polling for external changes. One server project root; explicitly authorized external refs are read-only; symlinks forbidden. The random API capability is passed as a URL fragment, not a query/server route, and is retained in the main client instance. The worker receives code, parameter values and a message schema, never the file API or token.
+- Files offers project/list/read/text/write/writeText/mkdir/rename/import/watch/draft. A user-selected FileSystemDirectoryHandle (readwrite) is the root for all project paths. SHA-256 revisions detect conflicting edits, createWritable commits file contents, polling detects external changes. File rename is copy+verify+delete, not atomic; folder rename is not supported. External files are explicitly authorized via a separate read-only handle for the current session. The worker gets code and parameters, never directory handles. No API, server, database or persisted browser handles.
 
 ## Model package
 
@@ -42,4 +42,4 @@ Number, boolean and choice supported. Runner commits parameter changes with the 
 
 ## Deliberate simplifications
 
-Local Node service with a pre-authorized project path instead of native folder-picker integration; 1.5-second file polling; columns with tab docking; line sampling for supported curves; native refs remain runtime/source references. No generic format conversion or full CAD editing.
+Desktop Chromium file system access; explicitly selected root, handles in memory; 1.5-second polling; columns with tab docking; line sampling for supported curves; native refs remain runtime/source references. Static built assets and WASM are precached by the scoped service worker. No generic format conversion or full CAD editing.

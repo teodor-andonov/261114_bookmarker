@@ -1,0 +1,7 @@
+/* Testlab theme integration: keep the technical workspace readable. */
+:root[data-theme="light"] body{background:#f2f4f6;color:#222b35}
+:root[data-theme="light"] header,:root[data-theme="light"] .toolbar,:root[data-theme="light"] .tabs{background:#e5e9ed}
+:root[data-theme="light"] button,:root[data-theme="light"] input,:root[data-theme="light"] select{background:#fff;color:#26313d;border-color:#c4cbd3}
+:root[data-theme="light"] .muted{color:#556577}
+:root[data-theme="light"] .selected,:root[data-theme="light"] button.active{color:#fff}
+:root[data-theme="light"] .status{color:#334e66}

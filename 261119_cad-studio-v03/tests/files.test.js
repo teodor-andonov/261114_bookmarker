@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {segments} from '../src/core/files.js';
+test('paths stay inside the selected folder',()=>{assert.deepEqual(segments('models/one.js'),['models','one.js']);for(const p of ['','../x','x/../y','/tmp/y','x//y','x\\y','x/./y'])assert.throws(()=>segments(p));});
