@@ -1,0 +1,2 @@
+import {defineConfig} from 'vite';
+export default defineConfig({base:'./',server:{host:'127.0.0.1',proxy:{'/api':'http://127.0.0.1:4179'}},optimizeDeps:{exclude:['replicad-opencascadejs','rhino3dm']},worker:{format:'es'}});
