@@ -14,6 +14,60 @@ function sample(count,offset,s,l,span=360){
     return {h,t:h/360,s,l,x:250+250*s*Math.sin(angle),y:250-250*s*Math.cos(angle),hex:"#"+rgb(h,s,l).map(x=>x.toString(16).padStart(2,"0")).join("").toUpperCase()};
   });
 }
+
+const SCHEME_TYPE="testlab.color-wheel";
+const SCHEME_VERSION=1;
+const STORAGE_KEY="testlab:261119_color-wheel:remembered-scheme";
+const FORMATS=["hex","rgb","rgb255","rgb1","hsl","hsl360","hsl1","hue360","hue1"];
+const DEFAULTS={count:6,offset:0,sat:80,light:50,span:360,format:"hex"};
+const LIMITS={count:[1,72],offset:[0,360],sat:[0,100],light:[0,100],span:[0,360]};
+const SVG_NS="http://www.w3.org/2000/svg";
+function validateScheme(doc){
+  if(!doc||typeof doc!=="object"||doc.type!==SCHEME_TYPE)throw Error("Not a Color Wheel scheme.");
+  if(doc.version!==SCHEME_VERSION)throw Error("Unsupported scheme version: "+String(doc.version).slice(0,30));
+  const src=doc.settings;
+  if(!src||typeof src!=="object"||Array.isArray(src))throw Error("Missing scheme settings.");
+  const settings={};
+  for(const [key,[min,max]] of Object.entries(LIMITS)){
+    const v=src[key],mult=key==="count"?1:10;
+    if(typeof v!=="number"||!Number.isFinite(v)||v<min||v>max||Math.abs(v*mult-Math.round(v*mult))>1e-8)throw Error("Invalid "+key+" setting.");
+    settings[key]=Math.round(v*mult)/mult;
+  }
+  if(!FORMATS.includes(src.format))throw Error("Unknown color format.");
+  settings.format=src.format;
+  return {type:SCHEME_TYPE,version:SCHEME_VERSION,settings};
+}
+function schemeJSON(settings){return JSON.stringify(validateScheme({type:SCHEME_TYPE,version:SCHEME_VERSION,settings}),null,2)+"\n";}
+function escapeXML(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&apos;");}
+function schemeSVG(settings){
+  const data=validateScheme({type:SCHEME_TYPE,version:SCHEME_VERSION,settings}),p=data.settings;
+  const rows=sample(p.count,p.offset,p.sat/100,p.light/100,p.span);
+  const columns=Math.min(6,rows.length),cellW=128,cellH=106,pad=24,top=86;
+  const width=Math.max(400,columns*cellW+2*pad),height=top+Math.ceil(rows.length/columns)*cellH+pad;
+  const txt=(x,y,value,size=12,color="#475569",weight=400)=>'<text x="'+x+'" y="'+y+'" font-family="system-ui, sans-serif" font-size="'+size+'" font-weight="'+weight+'" fill="'+color+'">'+escapeXML(value)+'</text>';
+  const rect=(x,y,w,h,fill,rx=0)=>'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="'+rx+'" fill="'+fill+'"/>';
+  const items=rows.map((row,i)=>{
+    const x=pad+(i%columns)*cellW,y=top+Math.floor(i/columns)*cellH;
+    return '<g id="sample-'+(i+1)+'">'+rect(x,y,cellW-10,68,row.hex,3)+txt(x,y+83,row.hex,12,"#17202a",600)+txt(x,y+98,"H "+Number(row.h.toFixed(2))+"°",11)+'</g>';
+  }).join("\n");
+  const description=p.count+" colors · offset "+p.offset+"° · span "+p.span+"° · S "+p.sat+"% · L "+p.light+"%";
+  return '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="'+SVG_NS+'" width="'+width+'" height="'+height+'" viewBox="0 0 '+width+' '+height+'">\n<title>Color Wheel scheme</title>\n<desc>'+escapeXML(description)+'</desc>\n<metadata id="testlab-color-wheel-scheme">'+escapeXML(JSON.stringify(data))+'</metadata>\n'+rect(0,0,width,height,"#ffffff")+txt(pad,32,"COLOR WHEEL",17,"#17202a",650)+txt(pad,57,description,11)+items+'\n</svg>\n';
+}
+function parseSchemeText(text){
+  const trimmed=text.replace(/^\uFEFF/,"").trim();
+  if(trimmed.startsWith("{"))return validateScheme(JSON.parse(trimmed));
+  if(trimmed.startsWith("<")){
+    // Never attach or render imported SVG. Only extract JSON from its metadata.
+    if(/<!DOCTYPE|<!ENTITY/i.test(trimmed))throw Error("SVG declarations are not supported.");
+    const xml=new DOMParser().parseFromString(trimmed,"image/svg+xml");
+    if(xml.getElementsByTagName("parsererror").length||xml.documentElement.localName!=="svg"||xml.documentElement.namespaceURI!==SVG_NS)throw Error("Invalid SVG scheme.");
+    const all=Array.from(xml.getElementsByTagNameNS(SVG_NS,"metadata")).filter(el=>el.getAttribute("id")==="testlab-color-wheel-scheme");
+    if(all.length!==1)throw Error("SVG has no unique Color Wheel scheme metadata.");
+    return validateScheme(JSON.parse(all[0].textContent));
+  }
+  throw Error("Choose a Color Wheel SVG or JSON file.");
+}
+
 const $=id=>document.getElementById(id);
 const controls=[
   {key:"count",min:1,max:72},
@@ -64,6 +118,93 @@ function set(k,n){
   $(k).value=n;
   $(k+"Number").value=$(k).value;
 }
+
+let remember=false;
+function readSettings(){
+  return {...Object.fromEntries(controls.map(c=>[c.key,val(c.key)])),format:$("format").value};
+}
+function schemeStatus(message,isError=false){
+  $("scheme-status").textContent=message;
+  $("scheme-status").dataset.error=String(isError);
+}
+function persist(){
+  if(!remember)return;
+  try{
+    const value=schemeJSON(readSettings());
+    localStorage.setItem(STORAGE_KEY,value);
+  }catch{
+    remember=false;$("remember").checked=false;
+    try{localStorage.removeItem(STORAGE_KEY);}catch{}
+    schemeStatus("Could not save settings in this browser.",true);
+  }
+}
+function applyScheme(doc){
+  const checked=validateScheme(doc);
+  for(const c of controls)set(c.key,checked.settings[c.key]);
+  $("format").value=checked.settings.format;
+  render();
+}
+function restoreRemembered(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(raw!==null){
+      const doc=validateScheme(JSON.parse(raw));
+      remember=true;$("remember").checked=true;
+      applyScheme(doc);
+      if(remember)schemeStatus("Restored remembered scheme.");
+      return true;
+    }
+  }catch{
+    remember=false;$("remember").checked=false;
+    schemeStatus("Saved browser settings could not be restored.",true);
+  }
+  return false;
+}
+$("remember").addEventListener("change",()=>{
+  remember=$("remember").checked;
+  if(remember){
+    persist();
+    if(remember)schemeStatus("Settings will be remembered in this browser.");
+  }else{
+    try{localStorage.removeItem(STORAGE_KEY);schemeStatus("Browser memory cleared.");}
+    catch{schemeStatus("Browser storage could not be cleared.",true);}
+  }
+});
+function saveScheme(format){
+  try{
+    const settings=readSettings(),isSVG=format==="svg";
+    const blob=new Blob([isSVG?schemeSVG(settings):schemeJSON(settings)],{type:isSVG?"image/svg+xml;charset=utf-8":"application/json;charset=utf-8"});
+    const url=URL.createObjectURL(blob),link=document.createElement("a");
+    link.href=url;link.download="color-wheel-"+settings.count+"-colors."+format;
+    document.body.append(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    schemeStatus("Exported "+format.toUpperCase()+" scheme.");
+  }catch(e){schemeStatus("Export failed: "+e.message,true);}
+}
+$("save-svg").addEventListener("click",()=>saveScheme("svg"));
+$("save-json").addEventListener("click",()=>saveScheme("json"));
+$("open-scheme").addEventListener("click",()=>$("scheme-file").click());
+let loadSequence=0;
+async function loadSchemeFile(file){
+  const seq=++loadSequence;
+  if(!file)return;
+  try{
+    if(file.size>2*1024*1024)throw Error("Scheme exceeds the 2 MB size limit.");
+    const text=await file.text();
+    if(seq!==loadSequence)return;
+    const doc=parseSchemeText(text);
+    applyScheme(doc);
+    schemeStatus("Loaded "+file.name+".");
+  }catch(e){
+    if(seq===loadSequence)schemeStatus("Could not load scheme: "+e.message,true);
+  }
+}
+$("scheme-file").addEventListener("change",e=>{
+  const file=e.target.files[0];
+  e.target.value="";
+  if(file)loadSchemeFile(file);
+});
+
 function circle(x,y,r,attrs){
   const el=document.createElementNS(ns,"circle");
   for(const [k,v] of Object.entries({cx:x,cy:y,r,...attrs}))el.setAttribute(k,v);
@@ -110,6 +251,7 @@ function render(){
     }
   });
   renderSamples();
+  persist();
 }
 function renderSamples(){
   const rows=currentRows,format=$("format").value;
@@ -129,7 +271,7 @@ function renderSamples(){
     return tr;
   }));
 }
-$("format").addEventListener("change",renderSamples);
+$("format").addEventListener("change",()=>{renderSamples();persist();});
 $("copy-all").addEventListener("click",()=>copyText(currentRows.map(p=>formatColor(p,$("format").value)).join("\n"),currentRows.length+" colors"));
 for(const c of controls){
   const range=$(c.key),number=$(c.key+"Number");
@@ -147,4 +289,4 @@ function pick(e){
 }
 surface.addEventListener("pointerdown",e=>{if(e.button!==0)return;surface.setPointerCapture(e.pointerId);pick(e);});
 surface.addEventListener("pointermove",e=>{if(surface.hasPointerCapture(e.pointerId))pick(e);});
-render();
+if(!restoreRemembered())render();

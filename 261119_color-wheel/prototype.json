@@ -1,10 +1,10 @@
 {
   "title": "Color Wheel",
-  "description": "Full-workspace parametric HSL wheel, circular or arc sampling, interchangeable color formats and copyable palettes.",
+  "description": "Parametric HSL wheel with circular or arc sampling, copyable palettes, editable SVG/JSON schemes and opt-in local settings.",
   "category": "Design / Color",
   "status": "Prototype",
   "monogram": "CW",
-  "version": "0.2.0-alpha.1",
+  "version": "0.3.0-alpha.1",
   "tags": [
     "HSL",
     "Color",
