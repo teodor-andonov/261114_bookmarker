@@ -19,7 +19,7 @@ async function run(ws,source,manual=true){
  if(r.trusted!==f.revision){if(!manual){r.stale('Source changed — Run to authorize new revision');return;}if(!confirm('Execute trusted local source '+source+'? Only run code you trust.')){r.status='Execution not authorized';r.emit();return;}r.trusted=f.revision;}
  r.watch.forEach(x=>x());r.watch=[ws.files.watch(source,f.revision,()=>{r.token++;clearTimeout(r.timer);r.pending?.terminate();r.pending=null;r.stale('Source changed — Run to authorize new revision');})];
  if(params.revision)r.watch.push(ws.files.watch(sidecar(source),params.revision,()=>{r.token++;clearTimeout(r.timer);r.pending?.terminate();r.pending=null;r.stale('Parameters changed — rebuild required');}));
- const worker=new Worker(new URL('./runner.worker.js',import.meta.url),{type:'module'});r.pending=worker;r.status='Building…';r.emit();
+ const worker=new Worker(new URL('./runner.worker.js',import.meta.url),{type:'module'});r.pending=worker;r.status='Building…';r.emit();const old=ws.resources.get(r.id);if(old)ws.resources.publish(r.id,{...old,stale:true});
  function fail(message){if(token!==r.token)return;clearTimeout(r.timer);worker.terminate();r.pending=null;r.stale('Build failed — '+message);r.log(message);}
  r.timer=setTimeout(()=>fail('Worker timed out after 120 seconds'),120000);
  worker.onerror=e=>fail(e.message||'Worker initialization failed');

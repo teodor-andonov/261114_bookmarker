@@ -1,4 +1,4 @@
-import rhino3dm from 'rhino3dm';
+import rhino3dm from 'rhino3dm/rhino3dm.module.js';
 import wasm from 'rhino3dm/rhino3dm.wasm?url';
 const started=rhino3dm({locateFile:()=>wasm});
 function xyz(v){return Array.isArray(v)||ArrayBuffer.isView(v)?[v[0],v[1],v[2]]:[v.x,v.y,v.z];}

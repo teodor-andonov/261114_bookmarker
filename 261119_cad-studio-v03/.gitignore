@@ -1,2 +1,5 @@
 node_modules/
 dist/
+demo/fixture.3dm
+playwright-report/
+test-results/

@@ -1,0 +1,3 @@
+# CAD Studio v0.3 development
+
+Use the coding brief v0.3 and ARCHITECTURE.md. Do not borrow prior Testlab implementations. Keep CAD semantics out of src/core; use one shared context per workspace, no links or graph. Work is file first. Commit coherent changes; use a dedicated branch and squash merge after verification. Record actual test results, supported geometry and known limitations; never claim mesh export is precise. Do not add dependencies or expand scope gratuitously. Do not publish this local service to GitHub Pages.
