@@ -48,7 +48,7 @@ export function build(source, includeMesh = false, progress = () => {}) {
           }
         }catch(error){console.warn("Preview edge sampling failed: "+error.message);}
       }
-      return {positions,indices,corners,normals,lines:new Float32Array(lines),faces:shape.faces().length,edges:edges.length,volume:shape instanceof sm.Part ? shape.volume : null};
+      return {positions,indices,corners,normals,lines:new Float32Array(lines),name:shape.name || null,color:shape.color || null,faces:shape.faces().length,edges:edges.length,volume:shape instanceof sm.Part ? shape.volume : null};
     });
     progress("Serializing native USDA" + (includeMesh ? " with preview meshes" : " (BRep only)"));
     const usda = sm.toUsd(shapes,{mesh: Boolean(includeMesh),materials:true});
@@ -59,5 +59,5 @@ export function build(source, includeMesh = false, progress = () => {}) {
 }
 
 export function roundTrip(usda) {
-  return sm.scope(() => normalizeShapes(sm.fromUsd(usda,{strict:true,check:true})).map(s=>({volume:s instanceof sm.Part ? s.volume : null,faces:s.faces().length,edges:s.edges().length})));
+  return sm.scope(() => normalizeShapes(sm.fromUsd(usda,{strict:true,check:true})).map(s=>({name:s.name || null,color:s.color || null,volume:s instanceof sm.Part ? s.volume : null,faces:s.faces().length,edges:s.edges().length})));
 }

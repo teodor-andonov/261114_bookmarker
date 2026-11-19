@@ -9,7 +9,7 @@ const defaultParams = { width: 80, depth: 60, height: 20 };
 const main = (sm, p) => sm.Box(p.width, p.depth, p.height);
 ```
 
-Return Part, Shell or an array of these. Direct API: https://smlibpy.classcad.ch/docs/javascript/ . Native toUsd writes BrepArray and optional display mesh; no hand-authored fake BRep. USD readers require the NVIDIA schema to interpret exact topology. Three.js previews are tessellations; edge overlay samples actual BRep edges (skipping parametric seams). Multi-object preview uses automatic colors; custom materials/names follow the kernel exporter rather than an app-managed metadata system.
+Return Part, Shell or an array of these. Direct API: https://smlibpy.classcad.ch/docs/javascript/ . Native toUsd writes BrepArray and optional display mesh; no hand-authored fake BRep. USD readers require the NVIDIA schema to interpret exact topology. Three.js previews are tessellations; edge overlay samples actual BRep edges (skipping parametric seams). Multi-object preview uses native body colors when provided and fallback colors otherwise; body names and colors flow through the kernel exporter.
 
 Worker scopes free transient kernel objects. It reopens generated USDA with strict/check and compares object counts and solid volume before enabling export. That is a same-library round-trip check, not independent OpenUSD validation. Tests cover box, drilled/filleted plate, union, separated objects and optional mesh output. Sliders modify source literals and camera remains stable during rebuilds.
 
@@ -24,3 +24,7 @@ Worker sends ready only after dynamic WASM import has resolved; the UI queues bu
 ## 0.1.2-alpha.1 — CAD preview and architectural demos
 
 Preview uses non-indexed triangle corners with SMLib's exact surface normals instead of averaging normals across shared vertices. Chord tolerance 0.01 model units; real BRep edge curves are sampled for display with depth offset. The four new original architectural studies are Fluid twist tower (loft), Ribbon pavilion (three sweeps), Parametric strata tower (variable plates), and Bifurcating canopy ribs (spatial spline sweeps). Each uses direct kernel API and undergoes native USDA round-trip tests. The export geometry remains unaffected by preview changes.
+
+## 0.1.3-alpha.1 — Galaxy SOHO architectural study
+
+An original procedural interpretation of [Zaha Hadid Architects' Galaxy SOHO](https://www.zha.com/projects/architecture/galaxy-soho) and a supplied aerial photo. Four differentiated annular towers, rounded lofted slabs, hollow external and atrium glazing rings, four roof crowns and oculus rims, tiered curved skybridges, podium and planting. Every element is a named, colored solid; connections are separate parts with intentional interface overlaps rather than a single boolean-unioned building. Dimensions are illustrative model units (not measured real-world metres). Not a construction model, not a measured replica; glazing is represented by colored solid walls, not transparent material simulations. The example source and its parameters stay editable. Tests exercise native geometry, names, colors and USDA round-trip, plus a mobile-size browser run.

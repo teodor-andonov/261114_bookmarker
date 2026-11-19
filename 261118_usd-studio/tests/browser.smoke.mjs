@@ -6,7 +6,7 @@ import {readFile} from "node:fs/promises";
 import {resolve,extname} from "node:path";
 const root=resolve("build"),prefix="/261114_testlab/261118_usd-studio/";
 const mime={".html":"text/html",".js":"text/javascript",".css":"text/css",".wasm":"application/wasm",".json":"application/json"};
-test("production browser worker initializes, logs stages and exports USDA under Pages subpath",{timeout:100000},async()=>{
+test("production browser worker initializes, logs stages and exports USDA under Pages subpath",{timeout:200000},async()=>{
   const server=createServer(async(req,res)=>{
     try{
       const pathname=new URL(req.url,"http://localhost").pathname;
@@ -44,6 +44,12 @@ test("production browser worker initializes, logs stages and exports USDA under 
     assert.match(await page.locator("#name").textContent(),/fluid-twist-tower/);
     assert.match(await page.locator("#status").textContent(),/Ready/);
     assert.match(await page.locator("#usda").textContent(),/BrepArray/);
+    await page.click("#commands");await page.locator("#search").fill("Galaxy SOHO");
+    await page.getByRole("button",{name:"Demo: Galaxy SOHO — architectural study",exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector("#export").disabled===false,{},{timeout:95000});
+    assert.match(await page.locator("#stats").textContent(),/objects/);
+    assert.match(await page.locator("#usda").textContent(),/Tower_A_Rounded_Roof_Crown/);
+    console.log("Galaxy browser model:",await page.locator("#stats").textContent());
   }catch(e){console.error(capture.join("\n"));if(page)console.error("ENGINE LOG:",await page.locator("#engineLog").textContent().catch(()=>""),"STATUS:",await page.locator("#status").textContent().catch(()=>""));throw e;}
   finally{await browser?.close();await new Promise(r=>server.close(r));}
 });
