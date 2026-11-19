@@ -11,7 +11,7 @@ for(const arg of process.argv.slice(3)){
  if(!(await fs.stat(actual)).isFile())throw Error('External reference must be a file');
  allowed.set('external:'+actual,actual);
 }
-const dist=path.join(here,'dist'), port=4179;
+const dist=path.join(here,'dist'), port=4179, capability=randomUUID()+randomUUID();
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const err=(message,status=400)=>Object.assign(new Error(message),{status});
 function lexical(rel){
@@ -66,7 +66,7 @@ createServer(async(req,res)=>{
  try{
  const url=new URL(req.url,'http://127.0.0.1:'+port), rel=url.searchParams.get('path')??'';
  if(url.pathname.startsWith('/api/')){
-  if(req.headers['x-cad-client']!=='studio'||(req.headers.origin&&!/^http:\/\/(127\.0\.0\.1|localhost):(?:4179|5173)$/.test(req.headers.origin)))throw err('Local studio requests only',403);
+  if(req.headers['x-cad-client']!==capability||(req.headers.origin&&!/^http:\/\/(127\.0\.0\.1|localhost):(?:4179|5173)$/.test(req.headers.origin)))throw err('Local studio requests only',403);
   const op=url.pathname.slice(5);
   if(req.method==='GET'){
    if(op==='project')return json(res,{name:path.basename(root),external:[...allowed.keys()]});
@@ -99,4 +99,4 @@ createServer(async(req,res)=>{
  const data=await fs.readFile(p);
  res.writeHead(200,{'Content-Type':mime[path.extname(p)]||'application/octet-stream'});res.end(data);
  }catch(e){json(res,{error:e.message},e.status||(e.code==='ENOENT'?404:500));}
-}).listen(port,'127.0.0.1',()=>console.log('CAD Studio: http://127.0.0.1:'+port+' | project: '+root));
+}).listen(port,'127.0.0.1',()=>console.log('CAD Studio: http://127.0.0.1:'+port+'/#token='+capability+' | project: '+root+' | dev: http://127.0.0.1:5173/#token='+capability));

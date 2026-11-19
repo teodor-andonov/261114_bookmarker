@@ -1,0 +1,10 @@
+import {modelId,publish} from '../model/index.js';
+function state(ws){if(!ws.state.has('rhino.states'))ws.state.set('rhino.states',new Map());return ws.state.get('rhino.states');}
+function parse(bytes,path,record){return new Promise((resolve,reject)=>{const worker=new Worker(new URL('./reader.worker.js',import.meta.url),{type:'module'});record.worker=worker;const finish=(fn,v)=>{clearTimeout(timeout);worker.terminate();if(record.worker===worker)record.worker=null;record.cancel=null;fn(v);};record.cancel=()=>finish(reject,Error('Import cancelled'));const timeout=setTimeout(()=>finish(reject,Error('3DM reading timed out')),120000);worker.onmessage=e=>e.data.ok?finish(resolve,e.data):finish(reject,Error(e.data.error));worker.onerror=e=>finish(reject,Error(e.message||'Rhino worker error'));worker.postMessage({bytes,path},[bytes.buffer]);});}
+async function open(ws,path){
+ const id=modelId('rhino',path),records=state(ws);let record=records.get(id);if(!record){record={token:0,watch:null,worker:null};records.set(id,record);const cleanup=()=>{record.token++;record.cancel?.();record.watch?.();records.delete(id);};ws.state.set('cleanup:'+id,cleanup);ws.cleanups.push(cleanup);}
+ const token=++record.token;record.cancel?.();ws.notify('Reading '+path);
+ try{const f=await ws.files.read(path);if(token!==record.token)return;const result=await parse(f.bytes,path,record);if(token!==record.token)return;const {ok,...data}=result;publish(ws,{type:'model@1',id,handler:'rhino',source:path,name:path.split('/').pop(),revision:f.revision,...data});record.watch?.();record.watch=ws.files.watch(path,f.revision,()=>open(ws,path).catch(e=>ws.notify(e.message,true)));ws.notify('Loaded '+path+' — '+data.objects.length+' objects'+(data.warning?' • '+data.warning:''));}
+ catch(e){if(token!==record.token)return;const m=ws.resources.get(id);if(m)ws.resources.publish(id,{...m,stale:true,warning:e.message});throw e;}
+}
+export default {id:'rhino',requires:['file','model'],handlers:[{id:'rhino',type:'model@1',restore:open}],operations:[{id:'rhino.open',title:'Open 3DM model',accepts:p=>/\.3dm$/i.test(p),run:open}]};

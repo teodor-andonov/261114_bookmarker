@@ -1,0 +1,45 @@
+{
+  "definitions": [
+    {
+      "id": "radius",
+      "label": "Base radius",
+      "type": "number",
+      "min": 400,
+      "max": 1400,
+      "step": 50,
+      "units": "mm"
+    },
+    {
+      "id": "height",
+      "label": "Height",
+      "type": "number",
+      "min": 600,
+      "max": 1800,
+      "step": 50,
+      "units": "mm"
+    },
+    {
+      "id": "gap",
+      "label": "Gap",
+      "type": "number",
+      "min": 0,
+      "max": 500,
+      "step": 25,
+      "units": "mm"
+    },
+    {
+      "id": "topRatio",
+      "label": "Top scale",
+      "type": "number",
+      "min": 0.2,
+      "max": 1.5,
+      "step": 0.05
+    }
+  ],
+  "values": {
+    "radius": 900,
+    "height": 1100,
+    "gap": 100,
+    "topRatio": 1.3
+  }
+}

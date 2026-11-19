@@ -1,8 +1,8 @@
 const enc=new TextEncoder(),dec=new TextDecoder();
 function base64(bytes){let s='';for(let i=0;i<bytes.length;i+=8192)s+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(s);}
 export class Files {
- constructor(){this.watches=new Map();this.drafts=new Map();this.timer=setInterval(()=>this.poll(),1500);}
- async request(op,path='',data){const r=await fetch('/api/'+op+'?path='+encodeURIComponent(path),{method:data===undefined?'GET':'POST',headers:{'X-CAD-Client':'studio',...(data===undefined?{}:{'Content-Type':'application/json'})},body:data===undefined?undefined:JSON.stringify(data)});if(!r.ok)throw Object.assign(Error((await r.json()).error),{status:r.status});return r;}
+ constructor(){this.capability=new URLSearchParams(location.hash.slice(1)).get('token')||prompt('Paste local server token from terminal')||'';this.watches=new Map();this.drafts=new Map();this.timer=setInterval(()=>this.poll(),1500);}
+ async request(op,path='',data){const r=await fetch('/api/'+op+'?path='+encodeURIComponent(path),{method:data===undefined?'GET':'POST',headers:{'X-CAD-Client':this.capability,...(data===undefined?{}:{'Content-Type':'application/json'})},body:data===undefined?undefined:JSON.stringify(data)});if(!r.ok)throw Object.assign(Error((await r.json()).error),{status:r.status});return r;}
  async json(op,path,data){return (await this.request(op,path,data)).json();}
  project(){return this.json('project');} list(p=''){return this.json('list',p);}
  async read(p){const r=await this.request('read',p);return {bytes:new Uint8Array(await r.arrayBuffer()),revision:r.headers.get('X-Revision')};}
