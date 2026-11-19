@@ -6,9 +6,11 @@ function rgb(h,s,l){
   return [f(0),f(8),f(4)];
 }
 
-function sample(count,offset,s,l){
+function interval(count,span){return count<2?0:span/(span===360?count:count-1);}
+
+function sample(count,offset,s,l,span=360){
   return Array.from({length:count},(_,i)=>{
-    const h=wrap(offset+i*360/count), angle=h*Math.PI/180;
+    const h=wrap(offset+i*interval(count,span)), angle=h*Math.PI/180;
     return {h,t:h/360,s,l,x:250+250*s*Math.sin(angle),y:250-250*s*Math.cos(angle),hex:"#"+rgb(h,s,l).map(x=>x.toString(16).padStart(2,"0")).join("").toUpperCase()};
   });
 }
@@ -17,12 +19,45 @@ const controls=[
   {key:"count",min:1,max:72},
   {key:"offset",min:0,max:360},
   {key:"sat",min:0,max:100},
-  {key:"light",min:0,max:100}
+  {key:"light",min:0,max:100},
+  {key:"span",min:0,max:360}
 ];
 const canvas=$("wheel"),ctx=canvas.getContext("2d"),overlay=$("overlay"),ns="http://www.w3.org/2000/svg";
-let previousLight=null;
+let previousLight=null,currentRows=[],copySequence=0;
 const val=k=>Number($(k).value);
 const fixed=(n,d=2)=>Number(n.toFixed(d)).toString();
+function formatColor(p,format){
+  const c=rgb(p.h,p.s,p.l);
+  const h=Number(p.h.toFixed(6))%360;
+  const t=(Math.round(p.t*1e9)%1e9)/1e9;
+  switch(format){
+    case "rgb":return "rgb("+c.join(", ")+")";
+    case "rgb255":return c.join(", ");
+    case "rgb1":return c.map(x=>(x/255).toFixed(6)).join(", ");
+    case "hsl":return "hsl("+fixed(h,6)+", "+fixed(p.s*100,3)+"%, "+fixed(p.l*100,3)+"%)";
+    case "hsl360":return [fixed(h,6),fixed(p.s*100,3),fixed(p.l*100,3)].join(", ");
+    case "hsl1":return [t.toFixed(9),p.s.toFixed(6),p.l.toFixed(6)].join(", ");
+    case "hue360":return fixed(h,6);
+    case "hue1":return t.toFixed(9);
+    default:return p.hex;
+  }
+}
+async function copyText(text,label){
+  const seq=++copySequence;
+  let ok=false;
+  try{
+    if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(text);ok=true;}
+  }catch{}
+  if(!ok){
+    const el=document.createElement("textarea");
+    el.value=text;el.setAttribute("readonly","");el.style.position="fixed";el.style.opacity="0";document.body.append(el);
+    const focus=document.activeElement;el.select();el.setSelectionRange(0,el.value.length);
+    try{ok=document.execCommand("copy");}catch{}
+    el.remove();focus?.focus();
+  }
+  if(seq==copySequence)$("copy-status").textContent=ok?"Copied "+label:"Clipboard unavailable. Select and copy the displayed value manually.";
+}
+function copySample(p,i){const value=formatColor(p,$("format").value);copyText(value,"sample "+(i+1)+": "+value);}
 function set(k,n){
   const c=controls.find(c=>c.key===k);
   n=Math.max(c.min,Math.min(c.max,n));
@@ -49,9 +84,9 @@ function drawWheel(l){
 }
 function render(){
   const n=val("count"),off=val("offset"),s=val("sat")/100,l=val("light")/100;
-  const rows=sample(n,off,s,l);
+  const span=val("span"),rows=sample(n,off,s,l,span);currentRows=rows;
   drawWheel(l);
-  $("step").textContent=fixed(360/n)+"° / "+(1/n).toFixed(6);
+  const step=interval(n,span);$("step").textContent=fixed(step)+"° / "+(step/360).toFixed(6);
   overlay.replaceChildren();
   if(s>0){
     circle(250,250,250*s,{fill:"none",stroke:"#fff","stroke-width":1,"stroke-opacity":.7,"stroke-dasharray":"3 5"});
@@ -74,20 +109,28 @@ function render(){
       label.setAttribute("class","wheel-label");label.textContent=String(i+1);overlay.append(label);
     }
   });
+  renderSamples();
+}
+function renderSamples(){
+  const rows=currentRows,format=$("format").value;
+  $("value-heading").textContent=$("format").selectedOptions[0].textContent;
   $("palette").replaceChildren(...rows.map((p,i)=>{
-    const chip=document.createElement("div");
-    chip.className="chip";chip.style.background=p.hex;chip.title=(i+1)+" · "+p.hex;
+    const chip=document.createElement("button");chip.type="button";
+    chip.className="chip";chip.style.background=p.hex;chip.title="Copy sample "+(i+1)+" · "+formatColor(p,format);chip.setAttribute("aria-label",chip.title);chip.addEventListener("click",()=>copySample(p,i));
     return chip;
   }));
   $("samples").replaceChildren(...rows.map((p,i)=>{
     const tr=document.createElement("tr");
-    const sw=document.createElement("span");sw.className="swatch";sw.style.background=p.hex;
+    const sw=document.createElement("button");sw.type="button";sw.className="swatch";sw.style.background=p.hex;sw.title="Copy sample "+(i+1);sw.setAttribute("aria-label",sw.title);sw.addEventListener("click",()=>copySample(p,i));
     const first=document.createElement("td");first.append(sw);tr.append(first);
-    const cells=[i+1,fixed(p.h)+"°",p.t.toFixed(6),fixed(p.s*100)+"%",fixed(p.l*100)+"%",p.hex];
+    const cells=[i+1,fixed(p.h,4)+"°",p.t.toFixed(6),fixed(p.s*100)+"%",fixed(p.l*100)+"%"];
     for(const v of cells){const td=document.createElement("td");td.textContent=v;tr.append(td);}
+    const value=document.createElement("button");value.type="button";value.className="copy-value";value.textContent=formatColor(p,format);value.title="Copy "+value.textContent;value.addEventListener("click",()=>copySample(p,i));const td=document.createElement("td");td.append(value);tr.append(td);
     return tr;
   }));
 }
+$("format").addEventListener("change",renderSamples);
+$("copy-all").addEventListener("click",()=>copyText(currentRows.map(p=>formatColor(p,$("format").value)).join("\n"),currentRows.length+" colors"));
 for(const c of controls){
   const range=$(c.key),number=$(c.key+"Number");
   range.addEventListener("input",()=>{number.value=range.value;render();});
