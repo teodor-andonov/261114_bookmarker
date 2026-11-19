@@ -1,0 +1,15 @@
+import {basicSetup,EditorView} from 'codemirror';import {javascript} from '@codemirror/lang-javascript';import {el,button,choose,action} from '../../core/dom.js';
+const editorChannel='text.openRequest';
+function mount(ws,root,settings,id){
+ const bar=el('div',{class:'toolbar'}),label=el('div',{class:'status'}),holder=el('div',{class:'editor'});root.append(bar,label,holder);
+ let path=settings.path||'',revision=null,dirty=false,changed=false,quiet=false,unwatch=()=>{},generation=0,disposed=false;
+ const editor=new EditorView({doc:'',extensions:[basicSetup,javascript(),EditorView.theme({'&':{color:'#e5e7eb',backgroundColor:'#1c1f23'},'.cm-gutters':{backgroundColor:'#202328',color:'#929aa4'},'.cm-content':{caretColor:'#fff'}},{dark:true}),EditorView.updateListener.of(update=>{if(update.docChanged&&!quiet){dirty=true;settings.dirty=true;ws.files.draft(path,id,true);status();}})],parent:holder});
+ function status(message=''){label.textContent=(path||'No text resource')+(dirty?' • unsaved':'')+(changed?' • external change':'')+(message?' — '+message:'');}
+ function load(text){quiet=true;editor.dispatch({changes:{from:0,to:editor.state.doc.length,insert:text}});quiet=false;dirty=false;settings.dirty=false;ws.files.draft(path,id,false);}
+ async function open(p,force=false){if(!p)return;if(dirty&&!force&&!confirm('Discard unsaved text edits?'))return;const token=++generation;const f=await ws.files.text(p);if(disposed||token!==generation)return;unwatch();ws.files.draft(path,id,false);path=p;settings.path=p;revision=f.revision;changed=false;load(f.text);unwatch=ws.files.watch(p,revision,async rev=>{if(rev===revision)return;if(dirty){changed=true;status();return;}try{const t=await ws.files.text(p);if(path!==p||disposed)return;if(dirty){changed=true;status();return;}revision=t.revision;load(t.text);changed=false;status();}catch(e){changed=true;status(e.message);}});status();}
+ const off=ws.context.subscribe(editorChannel,v=>{if(v?.path&&(!path||v.path!==path))open(v.path).catch(e=>status(e.message));});
+ bar.append(button('Open',action(ws,async()=>{const p=choose('Text file path',path);if(p)await open(p);})),button('Save',action(ws,async()=>{if(!path)throw Error('Open a text resource first');if(changed)throw Error('External change: reload or resolve before saving');if(ws.files.isDirty(path,id))throw Error('Another editor has unsaved edits');const value=editor.state.doc.toString(),r=await ws.files.writeText(path,value,revision);revision=r.revision;changed=false;if(editor.state.doc.toString()===value){dirty=false;settings.dirty=false;ws.files.draft(path,id,false);}status();})),button('Reload',action(ws,()=>open(path))));
+ if(path)open(path,true).catch(e=>status(e.message));else status();
+ return()=>{disposed=true;off();unwatch();ws.files.draft(path,id,false);editor.destroy();};
+}
+export default {id:'code-editor',requires:['text'],channels:[{id:editorChannel,default:null}],operations:[{id:'text.open',title:'Open in editor',accepts:p=>/\.(js|mjs|json|txt|md|csv|html|css|py|usda|xml)$/i.test(p),run:(ws,path)=>ws.context.set(editorChannel,{path,request:crypto.randomUUID()})}],tools:[{id:'code-editor',title:'Editor',mount}]};

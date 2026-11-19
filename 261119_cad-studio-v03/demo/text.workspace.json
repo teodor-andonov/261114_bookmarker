@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "name": "File and text only",
+  "enabledPackages": [
+    "file",
+    "text",
+    "file-explorer",
+    "code-editor"
+  ],
+  "panels": [
+    {
+      "id": "files",
+      "tool": "file-explorer",
+      "settings": {}
+    },
+    {
+      "id": "editor",
+      "tool": "code-editor",
+      "settings": {
+        "path": "cones.js"
+      }
+    }
+  ],
+  "groups": [
+    {
+      "id": "dock0",
+      "tabs": [
+        "files"
+      ],
+      "active": "files",
+      "weight": 1
+    },
+    {
+      "id": "dock1",
+      "tabs": [
+        "editor"
+      ],
+      "active": "editor",
+      "weight": 1
+    }
+  ],
+  "packageState": {}
+}

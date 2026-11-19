@@ -1,0 +1,8 @@
+import {readdir,readFile,writeFile} from 'node:fs/promises';import {createHash} from 'node:crypto';
+const hash=createHash('sha256'),urls=[];async function walk(rel=''){for(const e of (await readdir('build/'+rel,{withFileTypes:true})).sort((a,b)=>a.name.localeCompare(b.name))){const p=rel+e.name;if(e.isDirectory())await walk(p+'/');else if(p!=='cad-sw.js'){urls.push('./'+p);hash.update(p);hash.update(await readFile('build/'+p));}}}await walk();
+const version=hash.digest('hex').slice(0,16);
+const code=`const CACHE='cad-studio-v03-${version}',ASSETS=${JSON.stringify(urls)};const ROOT=self.registration.scope;
+self.addEventListener('install',e=>e.waitUntil((async()=>{const c=await caches.open(CACHE);await c.addAll(ASSETS.map(p=>new URL(p,ROOT).href));await self.skipWaiting();})()));
+self.addEventListener('activate',e=>e.waitUntil((async()=>{for(const k of await caches.keys())if(k.startsWith('cad-studio-v03-')&&k!==CACHE)await caches.delete(k);await self.clients.claim();})()));
+self.addEventListener('fetch',e=>{if(e.request.method!=='GET'||!e.request.url.startsWith(ROOT))return;const u=new URL(e.request.url);if(e.request.mode==='navigate'){e.respondWith(fetch(e.request).catch(()=>caches.open(CACHE).then(c=>c.match(new URL('index.html',ROOT).href))));return;}if(!ASSETS.some(p=>new URL(p,ROOT).href===u.href))return;e.respondWith(caches.open(CACHE).then(async c=>(await c.match(e.request))||fetch(e.request)));});`;
+await writeFile('build/cad-sw.js',code);console.log('Offline app cache:',urls.length,'files',version);

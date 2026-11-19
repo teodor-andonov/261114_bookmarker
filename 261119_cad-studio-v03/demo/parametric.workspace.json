@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "name": "Parametric study",
+  "enabledPackages": [
+    "file",
+    "text",
+    "file-explorer",
+    "code-editor",
+    "model",
+    "rhino",
+    "replicad",
+    "model-explorer",
+    "model-viewer",
+    "object-inspector",
+    "selection-observer"
+  ],
+  "panels": [
+    {
+      "id": "files",
+      "tool": "file-explorer",
+      "settings": {}
+    },
+    {
+      "id": "editor",
+      "tool": "code-editor",
+      "settings": {
+        "path": "cones.js"
+      }
+    },
+    {
+      "id": "runner",
+      "tool": "replicad",
+      "settings": {
+        "source": "cones.js"
+      }
+    },
+    {
+      "id": "viewer",
+      "tool": "model-viewer",
+      "settings": {}
+    },
+    {
+      "id": "tree",
+      "tool": "model-explorer",
+      "settings": {}
+    },
+    {
+      "id": "inspector",
+      "tool": "object-inspector",
+      "settings": {}
+    }
+  ],
+  "groups": [
+    {
+      "id": "dock0",
+      "tabs": [
+        "files"
+      ],
+      "active": "files",
+      "weight": 1
+    },
+    {
+      "id": "dock1",
+      "tabs": [
+        "editor",
+        "runner"
+      ],
+      "active": "editor",
+      "weight": 1
+    },
+    {
+      "id": "dock2",
+      "tabs": [
+        "viewer"
+      ],
+      "active": "viewer",
+      "weight": 2
+    },
+    {
+      "id": "dock3",
+      "tabs": [
+        "tree",
+        "inspector"
+      ],
+      "active": "tree",
+      "weight": 1
+    }
+  ],
+  "packageState": {}
+}

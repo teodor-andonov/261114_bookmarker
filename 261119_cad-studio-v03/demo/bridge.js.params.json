@@ -1,0 +1,48 @@
+{
+  "definitions": [
+    {
+      "id": "span",
+      "type": "number",
+      "min": 1000,
+      "max": 3000,
+      "step": 100,
+      "units": "mm"
+    },
+    {
+      "id": "depth",
+      "type": "number",
+      "min": 500,
+      "max": 1400,
+      "step": 50,
+      "units": "mm"
+    },
+    {
+      "id": "height",
+      "type": "number",
+      "min": 600,
+      "max": 1800,
+      "step": 50,
+      "units": "mm"
+    },
+    {
+      "id": "round",
+      "label": "Fillet edges",
+      "type": "boolean"
+    },
+    {
+      "id": "filletRadius",
+      "type": "number",
+      "min": 5,
+      "max": 50,
+      "step": 5,
+      "units": "mm"
+    }
+  ],
+  "values": {
+    "span": 2000,
+    "depth": 900,
+    "height": 1000,
+    "round": true,
+    "filletRadius": 25
+  }
+}

@@ -1,0 +1,2 @@
+# CAD Studio v0.3 development
+Follow the supplied v0.3 brief except the explicit later browser-only PWA decision. Desktop Chromium, one user-authorized directory per project, no server/API, no project database. Core stays domain independent. One context per workspace, no graph or links. Never borrow earlier prototypes as dependencies. Commit coherent changes, squash merge after checks. Node and npm are build/test tooling only. Pages deploy via Testlab workflow; document verification and gaps. Never claim unsupported geometry or untested exact exports.

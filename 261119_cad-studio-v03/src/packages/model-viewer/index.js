@@ -1,0 +1,28 @@
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {el,button} from '../../core/dom.js';import {C,active,observe,visible,qualified,select} from '../model/index.js';
+function mount(ws,root,settings){
+ const bar=el('div',{class:'toolbar'}),host=el('div',{class:'viewport'});root.append(bar,host);
+ const scene=new THREE.Scene();scene.background=new THREE.Color(0x22262b);
+ const camera=new THREE.PerspectiveCamera(42,1,.01,1e9);camera.up.set(0,0,1);camera.position.set(7,-10,7);
+ const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));host.append(renderer.domElement);
+ const orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=true;orbit.target.set(0,0,0);
+ if(settings.camera){camera.position.fromArray(settings.camera.position);orbit.target.fromArray(settings.camera.target);orbit.update();}
+ const grid=new THREE.GridHelper(20,20,0x58616a,0x343b41);grid.rotation.x=Math.PI/2;scene.add(grid,new THREE.AxesHelper(2),new THREE.HemisphereLight(0xffffff,0x4d535d,2.1));const light=new THREE.DirectionalLight(0xffffff,2.3);light.position.set(5,-6,12);scene.add(light);
+ const geometry=new THREE.Group();scene.add(geometry);const objects=new Map();let first=!settings.camera,frame=0,disposed=false;
+ function release(entry){geometry.remove(entry.group);entry.group.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});}
+ function build(m,o){const group=new THREE.Group();group.userData={modelId:m.id,objectId:o.id};const color=o.color||'#a8bdcd';for(const p of o.geometry?.display||[]){if(!p.positions?.length)continue;const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p.positions,3));if(p.indices?.length)g.setIndex(Array.from(p.indices));if(p.normals?.length===p.positions.length)g.setAttribute('normal',new THREE.Float32BufferAttribute(p.normals,3));let mesh;
+ if(p.kind==='mesh'){if(!g.attributes.normal)g.computeVertexNormals();mesh=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color,side:THREE.DoubleSide,roughness:.77,metalness:.05}));}
+ else if(p.kind==='points')mesh=new THREE.Points(g,new THREE.PointsMaterial({color,size:5,sizeAttenuation:false}));
+ else mesh=new THREE.Line(g,new THREE.LineBasicMaterial({color}));group.add(mesh);}
+ const scale=m.unitScale??1;group.scale.setScalar(scale);if(o.transform?.length===16)group.applyMatrix4(new THREE.Matrix4().fromArray(o.transform));geometry.add(group);return {group,revision:m.revision,object:o,model:m};}
+ function sync(){const keep=new Set();for(const m of active(ws))for(const o of m.objects){const key=qualified(m.id,o.id);keep.add(key);let e=objects.get(key);if(!e||e.revision!==m.revision){if(e)release(e);e=build(m,o);objects.set(key,e);}e.model=m;e.object=o;e.group.visible=visible(ws,m,o);const selected=ws.context.get(C.selection).some(r=>qualified(r.modelId,r.objectId)===key);e.group.traverse(x=>{if(x.material){x.material.color.set(selected?'#ffb45b':o.color||'#a8bdcd');if(x.material.emissive)x.material.emissive.set(selected?0x3c2000:0);}});}
+ for(const [key,e] of objects)if(!keep.has(key)){release(e);objects.delete(key);}if(first&&[...objects.values()].some(e=>e.group.children.length)){first=false;fit();}}
+ function fit(){const bounds=new THREE.Box3();for(const e of objects.values())if(e.group.visible&&e.group.children.length)bounds.expandByObject(e.group);if(bounds.isEmpty())return;const center=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3()).length(),distance=Math.max(.1,size*1.4);orbit.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(.8,-1,.75).normalize().multiplyScalar(distance));camera.near=Math.max(.00001,distance/10000);camera.far=Math.max(100,distance*1000);camera.updateProjectionMatrix();orbit.update();}
+ bar.append(button('Fit',fit),button('Grid',()=>grid.visible=!grid.visible),button('Clear selection',()=>ws.context.set(C.selection,[])));
+ const resize=new ResizeObserver(()=>{const w=host.clientWidth,h=host.clientHeight;if(w&&h){renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}});resize.observe(host);
+ let down;renderer.domElement.addEventListener('pointerdown',e=>down=[e.clientX,e.clientY]);renderer.domElement.addEventListener('pointerup',e=>{if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>4)return;const r=renderer.domElement.getBoundingClientRect(),ray=new THREE.Raycaster();ray.params.Line.threshold=.03;ray.params.Points.threshold=.03;ray.setFromCamera(new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1),camera);const hit=ray.intersectObjects([...objects.values()].filter(x=>x.group.visible).map(x=>x.group),true)[0];if(hit){let n=hit.object;while(n&&!n.userData.modelId)n=n.parent;const entry=n&&objects.get(qualified(n.userData.modelId,n.userData.objectId));if(entry){select(ws,entry.model,entry.object);return;}}ws.context.set(C.selection,[]);});
+ const off=observe(ws,sync);function loop(){if(disposed)return;frame=requestAnimationFrame(loop);if(host.clientWidth&&host.clientHeight){orbit.update();renderer.render(scene,camera);settings.camera={position:camera.position.toArray(),target:orbit.target.toArray()};}}loop();
+ return()=>{disposed=true;cancelAnimationFrame(frame);off();resize.disconnect();orbit.dispose();objects.forEach(release);scene.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});renderer.dispose();renderer.forceContextLoss();};
+}
+export default {id:'model-viewer',requires:['model'],tools:[{id:'model-viewer',title:'3D Viewer',mount}]};

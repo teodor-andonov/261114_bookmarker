@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "name": "Rhino inspection",
+  "enabledPackages": [
+    "file",
+    "text",
+    "file-explorer",
+    "code-editor",
+    "model",
+    "rhino",
+    "replicad",
+    "model-explorer",
+    "model-viewer",
+    "object-inspector",
+    "selection-observer"
+  ],
+  "panels": [
+    {
+      "id": "files",
+      "tool": "file-explorer",
+      "settings": {}
+    },
+    {
+      "id": "viewer",
+      "tool": "model-viewer",
+      "settings": {}
+    },
+    {
+      "id": "tree",
+      "tool": "model-explorer",
+      "settings": {}
+    },
+    {
+      "id": "inspector",
+      "tool": "object-inspector",
+      "settings": {}
+    }
+  ],
+  "groups": [
+    {
+      "id": "dock0",
+      "tabs": [
+        "files"
+      ],
+      "active": "files",
+      "weight": 1
+    },
+    {
+      "id": "dock1",
+      "tabs": [
+        "viewer"
+      ],
+      "active": "viewer",
+      "weight": 2
+    },
+    {
+      "id": "dock2",
+      "tabs": [
+        "tree",
+        "inspector"
+      ],
+      "active": "tree",
+      "weight": 1
+    }
+  ],
+  "packageState": {
+    "model": {
+      "sources": [
+        {
+          "handler": "rhino",
+          "path": "fixture.3dm"
+        }
+      ]
+    }
+  }
+}
