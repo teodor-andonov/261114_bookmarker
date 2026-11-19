@@ -1,0 +1,14 @@
+{
+  "title": "Color Wheel",
+  "description": "Parametric HSL color wheel with equally spaced samples, adjustable hue offset, saturation and lightness, normalized hue and HEX values.",
+  "category": "Design / Color",
+  "status": "Prototype",
+  "monogram": "CW",
+  "version": "0.1.0-alpha.1",
+  "tags": [
+    "HSL",
+    "Color",
+    "Parametric",
+    "Browser-only"
+  ]
+}
