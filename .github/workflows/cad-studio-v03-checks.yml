@@ -1,0 +1,26 @@
+name: CAD Studio v03 checks
+on:
+  push:
+    branches: [dev/261119-cad-studio-v03]
+    paths: ['261119_cad-studio-v03/**', '.github/workflows/cad-studio-v03-checks.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: 261119_cad-studio-v03
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+      - run: npm run fixture
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
