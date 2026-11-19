@@ -23,8 +23,9 @@ self.onmessage = ({data}) => {
     progress("Reopening USDA with strict topology validation");
     const checked = engine.roundTrip(result.usda);
     if(checked.length!==result.meshes.length) throw new Error("USDA round-trip changed the object count.");
+    const names=new Map(checked.filter(s=>s.name).map(s=>[s.name,s]));
     for(let i=0;i<checked.length;i++){
-      const original=result.meshes[i], recovered=checked[i];
+      const original=result.meshes[i], recovered=original.name && names.has(original.name) ? names.get(original.name) : checked[i];
       if(original.volume!==null && (!Number.isFinite(recovered.volume) || Math.abs(recovered.volume-original.volume)>Math.max(1e-5,Math.abs(original.volume)*1e-5))) throw new Error("USDA round-trip volume mismatch on object "+(i+1));
     }
     progress("Round-trip validation passed; sending preview");

@@ -11,7 +11,8 @@ for(const demo of DEMOS) test(demo.name+" native USDA",()=>{
   const result=roundTrip(built.usda);
   assert.equal(result.length,built.meshes.length);
   for(let i=0;i<result.length;i++){
-    const a=built.meshes[i],b=result[i];
+    const a=built.meshes[i],b=a.name?result.find(x=>x.name===a.name):result[i];
+    assert.ok(b,"Missing object "+a.name);
     assert.ok(a.volume>0);
     assert.ok(Math.abs(a.volume-b.volume)<Math.max(1e-5,a.volume*1e-5));
     assert.equal(a.faces,b.faces);
@@ -35,4 +36,26 @@ test("box uses hard face normals rather than averaged vertex normals",()=>{
    for(let j=3;j<9;j++) assert.ok(Math.abs(m.normals[i+j]-m.normals[i+j%3])<1e-5);
  }
  assert.equal(m.lines.length,12*6);
+});
+
+test("Galaxy SOHO detailed components and named material metadata",()=>{
+ const demo=DEMOS.find(d=>d.name.startsWith("Galaxy SOHO"));
+ const a=build(demo.source);
+ const names=a.meshes.map(m=>m.name);
+ assert.ok(a.meshes.length>140,"Expected detailed building rather than four masses");
+ assert.equal(new Set(names).size,names.length);
+ for(const id of ["A","B","C","D"]){
+   assert.ok(names.includes("Tower_"+id+"_Rounded_Roof_Crown"));
+   assert.ok(names.includes("Tower_"+id+"_White_Oculus_Rim"));
+   assert.ok(names.some(n=>n.startsWith("Tower_"+id)&&n.endsWith("Atrium_Glazing")));
+ }
+ assert.ok(names.some(n=>n.startsWith("Bridge_AD_Skybridge")));
+ assert.ok(names.includes("Central_Canyon_Water_Feature"));
+ assert.match(a.usda,/Material/);
+ assert.ok(a.meshes.every(m=>m.color!=null));
+ const b=roundTrip(a.usda);
+ for(const m of a.meshes){
+   const other=b.find(e=>e.name===m.name);
+   assert.ok(other?.color!=null,m.name+" missing color");
+ }
 });
